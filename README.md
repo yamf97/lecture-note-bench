@@ -1,53 +1,63 @@
-## 장인후 (Inhu Chang)
+# lecture-note-bench
 
-사회복지를 공부하고 사회복지 현장과 사회적기업 재단에서 15년 정도 일했습니다. 앞으로 사회복지 영역에서도 AI를 쓰는 일이 많아질 텐데, 그때 필요한 것은 AI를 쓸 줄 아는 것보다 믿을 수 있는 지식을 바탕으로 사람이 AI를 잘 활용하도록 돕는 도구라고 생각합니다. 그래서 지금은 컴퓨터공학을 공부하면서, 잘 정리된 지식 데이터베이스 위에서 작동하는 AI 도구를 제 공부와 연구에 먼저 만들어 쓰고 있습니다. 장기적으로는 이를 아동빈곤과 사회정책 연구로 이어가고 싶습니다.
+강의 자막으로 학습 노트를 만들 때, 여러 언어모델이 **근거를 지키며** 노트를 쓰는지 비교해 본 작은 실험과 도구입니다.
 
-### 요즘 하는 일
+Gilbert Strang의 MIT OCW 강의 *A 2020 Vision of Linear Algebra* 00번 영상(4분)을 대상으로, 같은 지시서를 오픈 웨이트 모델 다섯 개에 보내고 결과를 모델 이름을 가린 채 읽어 비교했습니다. 제가 선형대수를 다시 공부하면서 쓰는 방법을 정리한 것입니다.
 
-#### 이룸 (irum)
-논문을 찾고, 읽고, 쓰는 일을 한 프로그램에서 하는 Mac 앱입니다. 지금 초기 버전을 마무리하고 있습니다.
-처음에는 논문을 정독하는 도구(Reading Companion)를 따로 만들었습니다. 그런데 쓰다 보니 찾은 논문, 읽으며 남긴 메모, 쓰는 원고가 서로 떨어져 있는 게 문제였습니다. 그래서 그 도구를 바탕으로 세 가지를 하나로 묶은 것이 이룸입니다.
+## 무엇이 들어 있나
 
-- 찾기: 씨앗 논문에서 관련 논문을 넓혀 갑니다(OpenAlex, KCI). Zotero 서재도 불러옵니다.
-- 읽기: PDF에서 본문·수식·표를 뽑아 원문과 번역을 나란히 놓고 읽으며 메모합니다.
-- 쓰기: LaTeX 원고를 편집·컴파일하고, AI 채팅과 음성 받아쓰기, 발표 모드도 넣었습니다.
-- 세 화면이 논문 저장소 하나를 같이 씁니다. 이 서재를 MCP 서버로 열어 두어서, 앱 밖의 Claude Code나 Codex도 내 논문을 찾고 읽는 도구로 쓸 수 있습니다.
-- AI가 쓴 요약은 문장 단위로 쪼개 원문과 하나씩 대조해 검증합니다. 요약하는 모델과 검증하는 모델은 서로 다른 회사 모델을 씁니다.
-- 작업 폴더마다 지시문과 기억을 두고 AI에게 일을 맡기는데, AI가 도구를 쓸 때마다 허락을 받게 했습니다.
+| 위치 | 내용 |
+|---|---|
+| `METHOD.md` | AI로 학습 노트를 만들 때 쓰는 규칙: 근거 표시, 기계 검사, 노트 짜임, 여러 모델로 검토하는 법과 그 결과 |
+| `experiments/2026-09-22_vision00_directive-prompt.md` | 모델에 보낸 지시서. 노트의 절 순서, 인용 규칙(번역 먼저, 원문과 영상 시각은 아래), 검산 주석 규칙, 자막 전문이 들어 있습니다 |
+| `experiments/results/A.md` ~ `E.md` | 다섯 모델이 쓴 노트 원문. 어느 모델인지는 `labels.json`에 있습니다 |
+| `experiments/2026-09-23_blind-read.md` | 블라인드로 읽은 소감, 봉인 해제, 원문과 대조해 확인한 문제점, 결론 |
+| `tools/check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 행렬 검산식이 성립하는지 확인합니다 |
+| `tools/vtt_text.py` | VTT 자막을 읽기 좋은 평문으로 바꿉니다 |
+| `tools/run_gateway.py` | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다 |
+| `lectures/Strang_2020_vision_LA/` | 검사기가 쓰는 00번 영상 자막 |
 
-#### 스트렝 선형대수 스터디
-스트렝 교재와 MIT 강의로 스터디를 하고 있습니다. 강의 자막을 쉬운 노트로 바꾸고, 공부하면서 생긴 질문과 답을 날짜별로 모으고 있습니다. 같은 노트를 오픈 웨이트 모델 다섯 개에게 써보게 하고 이름을 가린 채 비교해 보기도 했는데, 가장 작은 27B 모델이 제일 나았습니다. 이 실험과, 할루시네이션을 막고 원문과 대조하는 제 작업 규칙은 [lecture-note-bench](https://github.com/yamf97/lecture-note-bench)에 공개해 두었습니다.
+## 결과 요약
 
-다음에는 스터디 녹화를 전사해서 자료로 만들고, 스터디와 수학 커뮤니티에서 자주 나오는 질문을 모아 답변 데이터베이스를 만들 생각입니다. 이걸 RAG와 온톨로지로 묶고, 파인튜닝까지 해서 MCP로 LLM에 붙여보려고 합니다. 아직 설계 단계입니다.
+| 라벨 | 모델 | 읽은 사람 순위 | 검사기 실패 |
+|---|---|---|---|
+| E | qwen/qwen3.8-27b | 1 | 0 |
+| A | qwen/qwen3.5-122b-a10b | 2 | 3 |
+| D | qwen/qwen3.6-35b-a3b | A와 비슷 | 3 |
+| B | qwen/qwen3.8-flash | 수식 표시 문제 | 2 |
+| C | openai/gpt-oss-120b | 가장 부족 | 1 |
 
-#### 그 밖에
-계량경제학(Angrist & Pischke)과 Agent AI 강의 스터디 노트·발표 자료, 영어 쉐도잉 앱을 만들고 있습니다.
+- 뼈대를 주면 다섯 모델 모두 노트를 채웠습니다. 남은 흠은 의역, 근거보다 먼저 나온 결론, 출력 형식 위반처럼 **사람이 읽고 잡아야 하는 종류**였습니다.
+- 가장 작은 27B dense 모델이 가장 나았습니다. 크기와 품질이 비례하지 않았고, 로컬에서 돌릴 수 있는 크기로도 충분할 수 있다는 신호입니다.
+- 과제 하나, 모델당 한 번 돌린 결과라서 결론이 아니라 관찰입니다.
 
-전에 수학 커뮤니티 자료로 AI 학습 도구를 만들자는 제안서를 함께 쓴 적이 있습니다. 실행하지는 않았지만, 지금 스터디 작업은 그때 생각에서 시작됐습니다.
+## 실행
 
-대부분 비공개 저장소입니다. 궁금한 게 있으면 연락 주세요.
+표준 라이브러리만 씁니다(Python 3.9 이상).
 
-Python · JavaScript/TypeScript · Electron · Claude/Gemini API · MCP · RAG · Obsidian · LaTeX
+```bash
+# 다섯 결과를 검사
+python3 tools/check_note.py experiments/results/*.md
 
-텍사스주 텍사캐나
+# 자막을 평문으로 (정확한 시각은 --cues)
+python3 tools/vtt_text.py lectures/Strang_2020_vision_LA/00-intro.vtt --cues
+
+# 같은 지시서를 다른 모델에 보내기 (OPENROUTER_API_KEY 필요)
+python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
+  --model qwen/qwen3.8-27b --reasoning high --stream \
+  --prompt experiments/2026-09-22_vision00_directive-prompt.md \
+  --out experiments/results/new.md
+```
+
+`run_gateway.py`는 지시서 파일에서 `=====` 두 줄 사이만 보냅니다. API 키는 환경변수에서만 읽고 출력하지 않습니다.
+
+## 출처와 라이선스
+
+- 강의 자막과 슬라이드 내용: Gilbert Strang, *A 2020 Vision of Linear Algebra* (MIT OpenCourseWare RES.18-010, Spring 2020), [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). `lectures/`의 VTT는 OCW 자막에서 큐 시작 시각(초 단위)을 살려 다시 만든 것입니다.
+- 지시서, 실험 기록, 모델이 쓴 노트(`experiments/`)도 강의 내용을 담고 있으므로 같은 CC BY-NC-SA 4.0으로 공개합니다.
+- 도구 코드(`tools/`)는 MIT License입니다.
+- 교재(*Introduction to Linear Algebra*)는 절 제목만 참고했고 본문은 싣지 않았습니다.
 
 ---
 
-### In English
-
-I spent about fifteen years in social welfare, both in the field and at a social enterprise foundation. AI will soon reach social welfare work too. What will matter most, I think, are tools grounded in trustworthy knowledge that help people use AI well. So I now study computer science, and I build those tools for my own study and research first.
-
-#### irum
-A Mac app that brings finding, reading, and writing papers into one place. I'm wrapping up its first version now. It grew out of my earlier close-reading tool, Reading Companion.
-
-- **Find**: expand from a seed paper to related work (OpenAlex, KCI) and import a Zotero library
-- **Read**: original and translation side by side, with notes
-- **Write**: LaTeX editing and compiling, with AI chat
-- One shared paper library, also exposed over MCP so agents like Claude Code can search and read it
-
-#### Strang linear algebra study
-- Plain-language notes from the lecture subtitles, plus a dated Q&A log
-- A blind comparison of five open-weight models writing the same note (the smallest, a 27B model, did best)
-- Next: a study-group Q&A database combining RAG, an ontology, and fine-tuning, served over MCP (design stage)
-
-My long-term research interest is child poverty and social policy. Most repos are private, so feel free to reach out.
+**In English.** A small experiment on generating study notes from lecture subtitles. Five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00, and I read the results blind. A stdlib-only checker verifies that every quote appears verbatim in the subtitles at the stated timestamp, and that the inline matrix checks hold. The smallest model (a 27B dense model) did best. That's a single run, so treat it as an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed.
