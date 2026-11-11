@@ -1,0 +1,13 @@
+{
+ "gateway": "https://openrouter.ai/api/v1",
+ "prompt": "experiments/2026-09-22_vision00_directive-prompt.md",
+ "reasoning": "high",
+ "stream": true,
+ "labels": {
+  "A": "qwen/qwen3.5-122b-a10b",
+  "B": "qwen/qwen3.8-flash",
+  "C": "openai/gpt-oss-120b",
+  "D": "qwen/qwen3.6-35b-a3b",
+  "E": "qwen/qwen3.8-27b"
+ }
+}
