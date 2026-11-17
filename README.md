@@ -2,7 +2,8 @@
 
 강의 영상으로 **근거를 지키는 학습 노트**를 만드는 도구와, 그 방법을 시험한 실험입니다.
 
-- **도구**: 강의 자막·영상을 받아 읽기본과 판서 장면을 만들고, 다 쓴 노트의 인용·시각·계산을 원문과 기계로 대조합니다
+- **도구**: 강의 자막·영상을 받아 읽기본과 판서 장면을 만들고, 다 쓴 노트의 인용·시각·계산을 원문과 기계로 대조합니다 (`tools/`, AI 없이도 쓰는 명령줄 도구)
+- **스킬**: 그 도구를 Claude Code가 순서대로 부르게 하는 안내서 (`skills/lecture-note/`)
 - **실험**: 같은 지시서로 오픈 웨이트 모델 다섯 개에게 노트를 쓰게 하고 모델 이름을 가린 채 비교했습니다
 
 선형대수·계량경제학을 다시 공부하면서 실제로 쓰는 방법을 정리한 것입니다. 노트 작성 규칙은 [METHOD.md](METHOD.md)에 있습니다.
@@ -71,6 +72,17 @@ python3 tools/check_note.py 노트.md --lectures 1 2 6
 - **장면 감지**는 [claude-video](https://github.com/bradautomates/claude-video)(MIT)의 방식(ffmpeg 장면 점수 + 썸네일 비교)을 참고해, 판서 강의에 맞게 「바뀌기 직전」 장면과 「바뀐 화소 수」 판정으로 바꿨습니다
 - `run_gateway.py`는 지시서 파일에서 `=====` 두 줄 사이만 보냅니다. API 키는 환경변수·설정 파일에서만 읽고 출력하지 않습니다
 
+## Claude Code 스킬로 쓰기
+
+`skills/lecture-note/`는 위 도구를 Claude Code가 순서대로 부르게 하는 스킬입니다. 「이 강의 노트 만들어 줘」처럼 말하면 받기 → 읽기본 → 판서 장면 → 노트 → 검사로 진행하고, 판서를 옮긴 부분은 사람이 확인하도록 따로 모읍니다.
+
+```bash
+git clone https://github.com/yamf97/lecture-note-bench.git
+ln -s "$PWD/lecture-note-bench/skills/lecture-note" ~/.claude/skills/lecture-note
+```
+
+스킬은 도구를 링크 너머 저장소의 `tools/`에서 찾습니다. 링크 대신 복사했다면 스킬 안의 `T=` 줄을 저장소 경로로 바꾸세요.
+
 ## 자료를 받을 때
 
 `fetch.py`는 영상 사이트(YouTube 등)에서 자막·영상·음성을 받는 도구입니다. **받을 권리가 있거나 허락된 자료에만** 쓰세요.
@@ -122,4 +134,4 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 ---
 
-**In English.** Tools for turning lecture videos into study notes that keep to their sources, plus a small experiment. The tools fetch captions (and, if needed, video or audio), transcribe locally with whisper.cpp when there are no captions, turn captions into 30-second reading text, pick board and slide frames just before each large change, and check finished notes: every quote must appear verbatim in the captions at the stated time, and inline calculations must hold. In the experiment, five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00 and I read the results blind; the smallest model (a 27B dense model) did best, from a single run, so it is an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `fetch.py` downloads from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.
+**In English.** Tools for turning lecture videos into study notes that keep to their sources, plus a small experiment. The tools fetch captions (and, if needed, video or audio), transcribe locally with whisper.cpp when there are no captions, turn captions into 30-second reading text, pick board and slide frames just before each large change, and check finished notes (a Claude Code skill in `skills/lecture-note/` chains them): every quote must appear verbatim in the captions at the stated time, and inline calculations must hold. In the experiment, five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00 and I read the results blind; the smallest model (a 27B dense model) did best, from a single run, so it is an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `fetch.py` downloads from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.
