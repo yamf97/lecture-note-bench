@@ -6,8 +6,9 @@
         --prompt docs/experiments/…prompt2-directive.md --out docs/experiments/bench/A-2.md \
         [--reasoning medium] [--base-url https://ai-gateway.vercel.sh/v1]
 
-- 키는 base-url의 호스트에 맞는 환경변수 또는 ~/.config/<게이트웨이>/key 에서만 읽고, 값을 출력하지 않는다 (전역 §5.6).
+- 키는 base-url의 호스트에 맞는 환경변수 또는 ~/.config/<게이트웨이>/key 에서만 읽고, 값을 출력하지 않는다.
   Vercel: AI_GATEWAY_API_KEY / ~/.config/ai-gateway/key · OpenRouter: OPENROUTER_API_KEY / ~/.config/openrouter/key
+  그 밖의 호스트는 키를 짐작해 보내지 않는다 — `--key-env 환경변수이름`으로 직접 정해야 한다.
 - 프롬프트 파일에 `=====` 줄이 두 개 있으면 그 사이만 보낸다. 없으면 전체.
 - 표준 라이브러리만 쓴다.
 - reasoning 파라미터 이름은 제공자마다 다르다 [원문 미확인]: 먼저 OpenAI식 `reasoning_effort`,
@@ -16,6 +17,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -29,17 +31,24 @@ GATEWAYS = {
     "openrouter.ai": ("OPENROUTER_API_KEY", "~/.config/openrouter/key"),
 }
 _BASE = DEFAULT_BASE
+_KEY_ENV = None  # 알려지지 않은 호스트용, --key-env
 
 
 def key():
     host = _BASE.split("//", 1)[-1].split("/", 1)[0]
-    env, path = GATEWAYS.get(host, ("AI_GATEWAY_API_KEY", "~/.config/ai-gateway/key"))
-    path = os.path.expanduser(path)
+    if host in GATEWAYS:
+        env, path = GATEWAYS[host]
+    elif _KEY_ENV:
+        env, path = _KEY_ENV, None
+    else:
+        # 모르는 주소에 다른 게이트웨이 키를 붙여 보내면 키가 샌다 (오타·악성 URL)
+        sys.exit(f"알려진 게이트웨이가 아니다: {host} — 보낼 키의 환경변수 이름을 --key-env 로 직접 정할 것")
     k = os.environ.get(env)
-    if not k and os.path.exists(path):
-        k = open(path, encoding="utf-8").read().strip()
+    if not k and path and os.path.exists(os.path.expanduser(path)):
+        k = open(os.path.expanduser(path), encoding="utf-8").read().strip()
     if not k:
-        sys.exit(f"키가 없다. 환경변수 {env} 또는 파일 {path} (chmod 600).")
+        where = f"환경변수 {env}" + (f" 또는 파일 {path} (chmod 600)" if path else "")
+        sys.exit(f"키가 없다. {where}.")
     return k
 
 
@@ -116,8 +125,8 @@ def list_models(base, substr):
 
 
 def prompt_body(path):
-    text = open(path, encoding="utf-8").read()
-    parts = text.split("\n=====\n")
+    text = open(path, encoding="utf-8").read().replace("\r\n", "\n")
+    parts = re.split(r"\n=====[ \t]*\n", text)
     if len(parts) >= 3:
         return parts[1].strip() + "\n"
     return text
@@ -172,9 +181,11 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--reasoning", default="medium")
     ap.add_argument("--stream", action="store_true", help="SSE 스트리밍으로 받는다 (긴 생성용)")
+    ap.add_argument("--key-env", metavar="ENV", help="알려지지 않은 --base-url 호스트에 보낼 키의 환경변수 이름")
     a = ap.parse_args()
-    global _BASE
+    global _BASE, _KEY_ENV
     _BASE = a.base_url
+    _KEY_ENV = a.key_env
 
     if a.list is not None:
         return list_models(a.base_url, a.list)
