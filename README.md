@@ -74,6 +74,17 @@ YouTube 자동 자막은 앞 큐의 줄을 다음 큐에서 되풀이합니다. 
 
 `run_gateway.py`는 지시서 파일에서 `=====` 두 줄 사이만 보냅니다. API 키는 환경변수에서만 읽고 출력하지 않습니다.
 
+## 자료를 받을 때
+
+`fetch.py`는 영상 사이트(YouTube 등)에서 자막·영상·음성을 받는 도구입니다. **받을 권리가 있거나 허락된 자료에만** 쓰세요.
+
+- 예: 이 저장소의 Strang 강의처럼 내려받기와 재사용을 허락하는 라이선스(MIT OpenCourseWare, CC BY-NC-SA)의 강의, 직접 만든 영상, 저작권자가 허락한 영상
+- 사이트 이용약관과 각 영상의 라이선스를 지키는 것은 쓰는 사람의 책임입니다. 많은 사이트가 허락 없는 내려받기를 막습니다
+- 받은 자막·영상·장면 사진은 개인 공부에만 쓰고 다시 배포하지 마세요. 이 저장소에 실린 강의 자료는 라이선스가 허락하는 것뿐입니다
+- 요청을 천천히 보내는 장치(강의당 1번, 20–40초 대기, 차단 응답이면 즉시 멈춤)는 사이트에 부담을 주지 않기 위한 것입니다. 우회하는 데 쓰지 마세요
+
+`vtt_text.py`·`transcribe.py`·`frames.py`·`check_note.py`는 이미 가진 파일만 다룹니다.
+
 ## 출처와 라이선스
 
 - 강의 자막과 슬라이드 내용: Gilbert Strang, *A 2020 Vision of Linear Algebra* (MIT OpenCourseWare RES.18-010, Spring 2020), [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). `lectures/`의 VTT는 OCW 자막에서 큐 시작 시각(초 단위)을 살려 다시 만든 것입니다.
@@ -83,4 +94,4 @@ YouTube 자동 자막은 앞 큐의 줄을 다음 큐에서 되풀이합니다. 
 
 ---
 
-**In English.** A small experiment on generating study notes from lecture subtitles. Five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00, and I read the results blind. A stdlib-only checker verifies that every quote appears verbatim in the subtitles at the stated timestamp, and that the inline matrix checks hold. The smallest model (a 27B dense model) did best. That's a single run, so treat it as an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed.
+**In English.** A small experiment on generating study notes from lecture subtitles. Five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00, and I read the results blind. A stdlib-only checker verifies that every quote appears verbatim in the subtitles at the stated timestamp, and that the inline matrix checks hold. The smallest model (a 27B dense model) did best. That's a single run, so treat it as an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `fetch.py` downloads captions and media from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.

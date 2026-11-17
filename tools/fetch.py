@@ -25,6 +25,10 @@
 결과 파일은 vtt_text.py · check_note.py 가 그대로 읽는다.
 
 필요한 것: yt-dlp · (via transcript-api 면) youtube_transcript_api · (전사 시) ffmpeg·whisper-cli.
+
+**받을 권리가 있거나 허락된 자료에만 쓴다** (예: CC 라이선스의 OCW 강의, 직접 만든 영상). 사이트 이용약관과
+영상 라이선스를 지키는 것은 쓰는 사람의 책임이고, 받은 자료는 개인 공부에만 쓰며 다시 배포하지 않는다.
+천천히 보내는 장치는 사이트 부담을 줄이려는 것이다 — 차단을 우회하는 데 쓰지 않는다 (README 「자료를 받을 때」).
 """
 import argparse
 import ast
