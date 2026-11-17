@@ -112,6 +112,8 @@ def main():
     ap.add_argument("--to", dest="hi", default=None, help="mm:ss 까지")
     ap.add_argument("--block", type=int, default=30, help="묶는 단위(초). 기본 30")
     a = ap.parse_args()
+    if a.block <= 0:
+        ap.error("--block 은 1 이상의 초여야 한다")
 
     cues = parse(a.vtt)
     lo = to_sec(a.lo) if a.lo else 0

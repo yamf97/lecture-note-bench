@@ -162,8 +162,14 @@ def main():
         step = len(picks) / a.max
         picks = [picks[int(i * step)] for i in range(a.max)]
     kept, last_thumb, dropped = [], None, 0
+    used = set()
     for t, why in picks:
         name = mmss(t).replace(":", "-") + ".jpg"
+        k = 1
+        while name in used:      # 같은 초의 두 장면 — 앞 장면을 덮어쓰지 않게
+            name = f"{mmss(t).replace(':', '-')}_{k}.jpg"
+            k += 1
+        used.add(name)
         out = os.path.join(outdir, name)
         if not grab(a.video, t, out, a.width):
             print(f"뽑기 실패: {mmss(t)}", file=sys.stderr)
