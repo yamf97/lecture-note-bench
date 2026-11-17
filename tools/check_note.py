@@ -330,14 +330,13 @@ _src_cache = {}
 
 def course_lectures(path):
     """(과목, [강 번호…]) — 첫 강이 그 노트의 강. 모르면 (None, [])."""
-    if ARGS.lectures:
-        return ARGS.course, ARGS.lectures
     pat = CONFIG["labels"].get("path")
     rel = os.path.relpath(os.path.abspath(path), CONFIG["dir"])
     m = re.search(pat, rel) if pat else None
-    if not m:
-        return None, []
-    return m.groupdict().get("course"), [int(m["lecture"])]
+    course = ARGS.course or (m.groupdict().get("course") if m else None)
+    if ARGS.lectures:
+        return course, ARGS.lectures
+    return (course, [int(m["lecture"])]) if m else (None, [])
 
 
 def source_text(name, spec, course, lecture):
@@ -426,12 +425,12 @@ def check_labels(path, text, n, fails):
                     over(main, to_sec(m.group(1).split(":")), m.group(1), m.start())
         n["시각"] = count
     if lab.get("explain") and lectures:
-        check_explain(lab["explain"], text, n, fails)
+        check_explain(lab["explain"], text, n, fails, course)
 
 
 # ── 6. 설명 빠짐 (labels.explain) ──────────────────────
 
-def check_explain(ex, text, n, fails):
+def check_explain(ex, text, n, fails, course=None):
     """본문 표시 앞(설명 구역)·용어 사전에 없는 용어·기호를 본문에서 쓰면 짚는다."""
     body = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)
     marker = ex.get("marker", "# ② 본문")
@@ -442,8 +441,10 @@ def check_explain(ex, text, n, fails):
     else:
         intro, rest = body[:cut], body[cut:]
     gl = ARGS.glossary or ex.get("glossary")
-    if gl:
-        with open(os.path.join(CONFIG["dir"], os.path.expanduser(gl)) if not ARGS.glossary else gl, encoding="utf-8") as f:
+    if gl and not ARGS.glossary:
+        gl = os.path.join(CONFIG["dir"], os.path.expanduser(gl.format(course=course)))
+    if gl and os.path.exists(gl):          # 사전이 없는 강좌도 있다 — {course} 로 강좌마다 다른 사전
+        with open(gl, encoding="utf-8") as f:
             intro += "\n" + f.read()
     miss = [t for t in ex.get("terms", []) if t in rest and t not in intro]
     msym = [name for sym, name in ex.get("symbols", {}).items() if sym in rest and sym not in intro]
