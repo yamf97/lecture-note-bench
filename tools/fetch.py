@@ -236,9 +236,8 @@ def course(folder, a):
         if plain:
             src = sorted(glob.glob(os.path.join(raw_dir, glob.escape(num) + "_*")))[0]
             make_plain(src, os.path.join(plain_dir, base + ".txt"), plain)
-        if a.video:
-            get_media(vid, os.path.join(folder, "video", base), "video")
-        print(f"   [ ok  ] {num} {title}")
+        got_video = get_media(vid, os.path.join(folder, "video", base), "video") if a.video else None
+        print(f"   [ ok  ] {num} {title}" + (f" · 영상 {got_video}" if got_video else ""))
 
     with open(os.path.join(folder, "failed.tsv"), "w", encoding="utf-8") as f:
         for idx, vid, _, title in rows:
