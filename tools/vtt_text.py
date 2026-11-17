@@ -16,6 +16,7 @@ import sys
 
 TIME = re.compile(r"(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})\s+-->\s+(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})")
 TAG = re.compile(r"<[^>]+>")
+WORD_TIME = re.compile(r"<\d{2}:\d{2}:\d{2}[.,]\d{3}>")  # YouTube 자동 자막의 단어별 시각
 
 
 def clean(line):
@@ -26,11 +27,12 @@ def clean(line):
 def parse(path):
     """[(시작초, 끝초, 텍스트), …] — 큐 순서 그대로.
 
-    YouTube 자동 자막(yt-dlp)처럼 앞 큐의 줄을 다음 큐에서 되풀이하는 "흘러가는" 자막도 읽는다.
-    바로 앞에 나온 줄과 같은 줄은 버리므로, 한 구절은 처음 나온 큐의 시각에 한 번만 남는다.
-    (부작용: 강사가 같은 말을 연달아 두 번 한 줄도 하나로 합쳐진다.)
+    YouTube 자동 자막(yt-dlp)은 앞 큐의 줄을 다음 큐에서 되풀이한다. 단어별 시각 태그가 있는
+    파일이면 이 자막으로 보고, 시각 태그 없는 줄이 바로 앞에 나온 줄과 같으면 버린다. 새로 나온
+    말에는 늘 태그가 붙으므로, 강사가 같은 말을 연달아 두 번 해도 둘 다 남는다.
+    사람이 단 자막에는 이 처리를 하지 않는다 — 실제로 되풀이한 말이 지워지기 때문이다.
     """
-    raw_cues, start, end, buf = [], None, None, []
+    raw_cues, start, end, buf, rolling = [], None, None, [], False
 
     def flush():
         if start is not None and buf:
@@ -54,14 +56,15 @@ def parse(path):
                         start, buf = None, []
                 else:
                     buf.append(line)
+                    rolling = rolling or bool(WORD_TIME.search(line))
     flush()
 
     cues, last = [], None
     for s, e, lines in raw_cues:
-        lines = [c for c in (clean(x) for x in lines) if c]
-        new = [c for c in lines if c != last]
+        lines = [(c, bool(WORD_TIME.search(x))) for x in lines for c in [clean(x)] if c]
+        new = [c for c, timed in lines if timed or not rolling or c != last]
         if lines:
-            last = lines[-1]
+            last = lines[-1][0]
         if new:
             cues.append((s, e, " ".join(new)))
     return cues
