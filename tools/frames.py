@@ -20,7 +20,9 @@
      지우기 전 가득 찬 칠판, 넘기기 전 다 채워진 슬라이드가 필요하다. 영상 마지막 장면도 넣는다
   3. 뽑은 장면 사이가 --every(기본 30초)보다 길면 그 사이를 간격 장면으로 채운다
      (지우지 않고 계속 써 내려가는 판서, 카메라 하나가 칠판만 찍는 강의)
-  4. 거의 같은 장면은 버린다 — 16×16 썸네일의 화소 평균 차이가 --dedup(기본 2.0, 0–255) 이하이면 같은 장면
+  4. 거의 같은 장면은 버린다 — 64×64 흑백으로 줄여 밝기가 40 넘게 바뀐 화소가 --dedup(기본 8)개 미만이면 같은 장면.
+     (처음엔 claude-video 의 16×16 평균 차이 ≤ 2.0 을 썼으나, 펜으로 조금씩 쓰는 판서에서 새 글씨가 있는 장면을
+     「같은 장면」으로 버렸다 — Ben Lambert 강의 실측 2026-11-17: 30초마다 바뀐 화소 16–63개인데 평균 차이 0.06–0.78)
   5. --max(기본 120)를 넘으면 고르게 솎는다
 장면 감지는 바뀐 순간을 다 잡지 못한다. 빠진 곳은 자막을 읽고 --at 으로 더 뽑는다.
 
@@ -80,14 +82,15 @@ def grab(path, t, out, width):
 
 
 def thumb(img):
-    return subprocess.run(["ffmpeg", "-v", "error", "-i", img, "-vf", "scale=16:16", "-f", "rawvideo",
-                           "-pix_fmt", "rgb24", "-"], capture_output=True, stdin=subprocess.DEVNULL).stdout
+    return subprocess.run(["ffmpeg", "-v", "error", "-i", img, "-vf", "scale=64:64", "-f", "rawvideo",
+                           "-pix_fmt", "gray", "-"], capture_output=True, stdin=subprocess.DEVNULL).stdout
 
 
 def delta(a, b):
+    """크게(밝기 40 넘게) 바뀐 화소 수 — 새 글씨·지운 곳이 있으면 늘어난다."""
     if not a or len(a) != len(b):
-        return 255.0
-    return sum(abs(x - y) for x, y in zip(a, b)) / len(a)
+        return 1 << 30
+    return sum(1 for x, y in zip(a, b) if abs(x - y) > 40)
 
 
 def plan(path, a):
@@ -139,7 +142,7 @@ def main():
     ap.add_argument("--scene", type=float, default=0.05)
     ap.add_argument("--min-gap", dest="min_gap", type=float, default=3)
     ap.add_argument("--before", type=float, default=0.5)
-    ap.add_argument("--dedup", type=float, default=2.0)
+    ap.add_argument("--dedup", type=int, default=8, help="같은 장면으로 볼 바뀐 화소 수 상한(64×64 중)")
     ap.add_argument("--no-dedup", action="store_true")
     ap.add_argument("--max", type=int, default=120)
     ap.add_argument("--width", type=int, default=1280)
@@ -166,7 +169,7 @@ def main():
             print(f"뽑기 실패: {mmss(t)}", file=sys.stderr)
             continue
         th = thumb(out)
-        if not a.no_dedup and why != "직접" and last_thumb is not None and delta(th, last_thumb) <= a.dedup:
+        if not a.no_dedup and why != "직접" and last_thumb is not None and delta(th, last_thumb) < a.dedup:
             os.remove(out)
             dropped += 1
             continue
