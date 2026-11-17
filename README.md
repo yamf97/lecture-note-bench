@@ -13,7 +13,7 @@ Gilbert Strang의 MIT OCW 강의 *A 2020 Vision of Linear Algebra* 00번 영상(
 | `experiments/results/A.md` ~ `E.md` | 다섯 모델이 쓴 노트 원문. 어느 모델인지는 `labels.json`에 있습니다 |
 | `experiments/2026-09-23_blind-read.md` | 블라인드로 읽은 소감, 봉인 해제, 원문과 대조해 확인한 문제점, 결론 |
 | `tools/check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 행렬 검산식이 성립하는지 확인합니다 |
-| `tools/vtt_text.py` | VTT 자막을 읽기 좋은 평문으로 바꿉니다 |
+| `tools/vtt_text.py` | 자막을 읽기 좋은 평문으로 바꿉니다. 사람이 단 VTT, YouTube 자동 자막(yt-dlp), SRT(whisper 출력 등)를 읽습니다 |
 | `tools/run_gateway.py` | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다 |
 | `lectures/Strang_2020_vision_LA/` | 검사기가 쓰는 00번 영상 자막 |
 
@@ -42,12 +42,18 @@ python3 tools/check_note.py experiments/results/*.md
 # 자막을 평문으로 (정확한 시각은 --cues)
 python3 tools/vtt_text.py lectures/Strang_2020_vision_LA/00-intro.vtt --cues
 
+# YouTube 자동 자막도 그대로 넣으면 됩니다
+yt-dlp --skip-download --write-auto-subs --sub-langs en-orig -o lecture <URL>
+python3 tools/vtt_text.py lecture.en-orig.vtt
+
 # 같은 지시서를 다른 모델에 보내기 (OPENROUTER_API_KEY 필요)
 python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
   --model qwen/qwen3.8-27b --reasoning high --stream \
   --prompt experiments/2026-09-22_vision00_directive-prompt.md \
   --out experiments/results/new.md
 ```
+
+YouTube 자동 자막은 앞 큐의 줄을 다음 큐에서 되풀이합니다. 그대로 이어 붙이면 같은 구절이 두세 번 나오고 시각도 밀립니다. `vtt_text.py`는 바로 앞 줄과 같은 줄을 버려서, 구절마다 처음 나온 시각에 한 번만 남깁니다. 그래서 강사가 같은 말을 연달아 두 번 하면 그것도 한 번으로 합쳐집니다.
 
 `run_gateway.py`는 지시서 파일에서 `=====` 두 줄 사이만 보냅니다. API 키는 환경변수에서만 읽고 출력하지 않습니다.
 

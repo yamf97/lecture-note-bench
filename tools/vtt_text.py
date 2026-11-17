@@ -6,6 +6,7 @@
     python3 tools/vtt_text.py <파일.vtt> --from 03:00 --to 06:30
 
 주의: 30초로 묶은 좌표는 **구간 시작 시각**이다. 인용에 쓸 정확한 시각은 --cues 로 찾는다.
+YouTube 자동 자막(yt-dlp, 단어별 시각 포함)과 SRT(whisper 출력 등)도 읽는다.
 표준 라이브러리만 쓴다.
 """
 import argparse
@@ -17,21 +18,27 @@ TIME = re.compile(r"(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})\s+-->\s+(?:(\d+):)?(\d
 TAG = re.compile(r"<[^>]+>")
 
 
+def clean(line):
+    line = html.unescape(TAG.sub("", line))
+    return re.sub(r"\s+", " ", line).strip()
+
+
 def parse(path):
-    """[(시작초, 끝초, 텍스트), …] — 큐 순서 그대로."""
-    cues, start, end, buf = [], None, None, []
+    """[(시작초, 끝초, 텍스트), …] — 큐 순서 그대로.
+
+    YouTube 자동 자막(yt-dlp)처럼 앞 큐의 줄을 다음 큐에서 되풀이하는 "흘러가는" 자막도 읽는다.
+    바로 앞에 나온 줄과 같은 줄은 버리므로, 한 구절은 처음 나온 큐의 시각에 한 번만 남는다.
+    (부작용: 강사가 같은 말을 연달아 두 번 한 줄도 하나로 합쳐진다.)
+    """
+    raw_cues, start, end, buf = [], None, None, []
 
     def flush():
         if start is not None and buf:
-            text = " ".join(buf)
-            text = html.unescape(TAG.sub("", text))
-            text = re.sub(r"\s+", " ", text).strip()
-            if text:
-                cues.append((start, end, text))
+            raw_cues.append((start, end, buf))
 
     with open(path, encoding="utf-8-sig") as f:
         for raw in f:
-            line = raw.rstrip("\n")
+            line = raw.rstrip("\r\n")
             m = TIME.search(line)
             if m:
                 flush()
@@ -41,11 +48,22 @@ def parse(path):
                 buf = []
             elif start is not None:
                 if not line.strip():
-                    flush()
-                    start, buf = None, []
+                    # yt-dlp 단어 시각 큐는 공백 한 칸 줄로 시작한다 — 아직 글이 없으면 큐의 끝이 아니다
+                    if buf:
+                        flush()
+                        start, buf = None, []
                 else:
-                    buf.append(line.strip())
+                    buf.append(line)
     flush()
+
+    cues, last = [], None
+    for s, e, lines in raw_cues:
+        lines = [c for c in (clean(x) for x in lines) if c]
+        new = [c for c in lines if c != last]
+        if lines:
+            last = lines[-1]
+        if new:
+            cues.append((s, e, " ".join(new)))
     return cues
 
 
