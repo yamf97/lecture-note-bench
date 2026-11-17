@@ -117,8 +117,10 @@ def get_transcript_api(vid, langs, title, series, out):
     """'ok' | 'none' | 'blocked' | 'bad'."""
     r = run(["youtube_transcript_api", "--languages", *langs, "--", vid])
     body = r.stdout + r.stderr
+    if BLOCK_TAPI.search(body):     # 차단은 다른 문구 없이 올 수도 있다 — 먼저 본다
+        return "blocked"
     if NOTX_RE.search(body):
-        return "blocked" if BLOCK_TAPI.search(body) else "none"
+        return "none"
     if segments(r.stdout) is None:
         return "bad"
     with open(out, "w", encoding="utf-8") as f:
@@ -203,6 +205,14 @@ def course(folder, a):
         print(">> 재생목록 목록 수집 중...")
         r = run(["yt-dlp", "--flat-playlist", "--print",
                  "%(playlist_index)s\t%(id)s\t%(duration)s\t%(title)s", cfg["playlist"]])
+        if BLOCK_YTDLP.search(r.stdout + r.stderr):
+            print("!! 재생목록 수집에서 차단 응답 — 즉시 중단. 시간이 지난 뒤 다시 실행\n"
+                  + "\n".join(r.stderr.splitlines()[-3:]))
+            return 2
+        if r.returncode != 0 or not r.stdout.strip():
+            # 빈 index.tsv 를 남기면 다음 실행이 「강의 0개」로 이어받는다 — 쓰지 않고 실패로 끝낸다
+            print("!! 재생목록 수집 실패 — index.tsv 를 만들지 않음\n" + "\n".join(r.stderr.splitlines()[-3:]))
+            return 1
         open(index, "w", encoding="utf-8").write(r.stdout)
     rows = read_index(index)
     print(f">> 총 {len(rows)}개 강의, 이번 최대 {a.max}개 요청")
@@ -231,7 +241,7 @@ def course(folder, a):
             if res == "ok":
                 res = "ok" if transcribe(glob.glob(glob.escape(audio) + ".*")[0], raw_dir, a.lang) else "none"
         if res == "blocked":
-            print(f"!! {num}에서 차단 응답 — 즉시 중단. VPN 서버를 바꾸거나 시간이 지난 뒤 다시 실행")
+            print(f"!! {num}에서 차단 응답 — 즉시 중단. 시간이 지난 뒤 다시 실행")
             stopped = True
             break
         if res != "ok":
