@@ -129,7 +129,7 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 - 강의 자막과 슬라이드 내용: Gilbert Strang, *A 2020 Vision of Linear Algebra* (MIT OpenCourseWare RES.18-010, Spring 2020), [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). `lectures/`의 VTT는 OCW 자막에서 큐 시작 시각(초 단위)을 살려 다시 만든 것입니다.
 - 지시서, 실험 기록, 모델이 쓴 노트(`experiments/`)도 강의 내용을 담고 있으므로 같은 CC BY-NC-SA 4.0으로 공개합니다.
-- 도구 코드(`tools/`)는 MIT License입니다. `frames.py`의 장면 감지는 claude-video(Bradley Bonanno, MIT)를 참고했습니다.
+- 도구 코드(`tools/`)와 스킬(`skills/`)은 MIT License입니다. `frames.py`의 장면 감지는 claude-video(Bradley Bonanno, MIT)를 참고했습니다.
 - 교재(*Introduction to Linear Algebra*)는 절 제목만 참고했고 본문은 싣지 않았습니다.
 
 ---
