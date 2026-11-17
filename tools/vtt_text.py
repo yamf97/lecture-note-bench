@@ -6,10 +6,12 @@
     python3 tools/vtt_text.py <파일.vtt> --from 03:00 --to 06:30
 
 주의: 30초로 묶은 좌표는 **구간 시작 시각**이다. 인용에 쓸 정확한 시각은 --cues 로 찾는다.
-YouTube 자동 자막(yt-dlp, 단어별 시각 포함)과 SRT(whisper 출력 등)도 읽는다.
+YouTube 자동 자막(yt-dlp, 단어별 시각 포함), SRT(whisper 출력 등), youtube_transcript_api 출력
+(`#` 머리줄 + [{start, duration, text}, …] 파이썬 목록)도 읽는다.
 표준 라이브러리만 쓴다.
 """
 import argparse
+import ast
 import html
 import re
 import sys
@@ -24,6 +26,25 @@ def clean(line):
     return re.sub(r"\s+", " ", line).strip()
 
 
+def transcript_api(path):
+    """youtube_transcript_api 출력이면 [(시작, 끝, 텍스트)], 아니면 None."""
+    with open(path, encoding="utf-8-sig") as f:
+        body = "".join(l for l in f if not l.startswith("#")).strip()
+    if not body.startswith("["):
+        return None
+    try:
+        data = ast.literal_eval(body)
+    except (ValueError, SyntaxError):
+        return None
+    segs = data[0] if data and isinstance(data[0], list) else data
+    out = []
+    for g in segs:
+        text = clean(g.get("text", ""))
+        if text:
+            out.append((g["start"], g["start"] + g.get("duration", 0), text))
+    return out
+
+
 def parse(path):
     """[(시작초, 끝초, 텍스트), …] — 큐 순서 그대로.
 
@@ -32,6 +53,9 @@ def parse(path):
     말에는 늘 태그가 붙으므로, 강사가 같은 말을 연달아 두 번 해도 둘 다 남는다.
     사람이 단 자막에는 이 처리를 하지 않는다 — 실제로 되풀이한 말이 지워지기 때문이다.
     """
+    segs = transcript_api(path)
+    if segs is not None:
+        return segs
     raw_cues, start, end, buf, rolling = [], None, None, [], False
 
     def flush():

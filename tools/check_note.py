@@ -4,6 +4,7 @@
     python3 tools/check_note.py <노트.md> [<노트.md> …]
     python3 tools/check_note.py --all [폴더]          # 폴더(기본: 설정의 "all") 아래 모든 .md
     python3 tools/check_note.py <노트.md> --course 과목 --lecture N   # 라벨 인용의 과목·강을 직접 줄 때
+    python3 tools/check_note.py <노트.md> --lectures 1 2 6 --glossary 사전.md
 
 검사하는 것
   1. 자막 인용  "…" `[Vision NN mm:ss]`   (좌표가 앞에 오는 꼴 `[…]` "…" 도 읽는다. 같은 줄이어야 한다)
@@ -40,6 +41,10 @@
         "path": "(?P<course>[^/]+)/notes/L(?P<lecture>\\d+)",   # 노트 경로에서 과목·강 읽기
         "match": "nospace",                        # 공백을 모두 지우고 대조 (기본 "space": 하나로 맞춤)
         "time": "range",                           # 노트의 mm:ss·hh:mm:ss 가 강의 길이 안인가
+        "time_tokens": "backtick",                 # (선택) `03:13`·`00:00–01:26`·`L01 03:13` 만 본다
+        "time_slack": 1,                           # (선택) 길이보다 이만큼(초)까지는 봐준다
+        "explain": {"marker": "# ② 본문", "terms": ["계수"], "symbols": {"\\hat": "햇"},
+                    "glossary": "…/glossary.md"},  # (선택) 6. 설명 빠짐
         "sources": {
           "원문":   {"type": "caption", "files": ["{course}/scripts/*{lecture:02d}강*.srt"]},
           "강의록": {"type": "pdf", "files": ["{course}/강의록/*_{lecture}강_강의록.pdf"],
@@ -49,8 +54,10 @@
     }
 
   5. 라벨 인용 (labels 가 있을 때)
-       - 라벨 "…" 의 글이 그 과목·강의 자료에 있는가. caption 은 자막(VTT·SRT), pdf 는 pdftotext 로 뽑은 글
-       - files 는 차례로 찾아 처음 맞는 파일을 쓴다
+       - 라벨 "…" 의 글이 그 과목·강의 자료에 있는가. caption 은 자막(vtt_text 가 읽는 모든 꼴), pdf 는 pdftotext
+       - files 는 차례로 찾아 처음 맞는 파일을 쓴다. --lectures 1 2 6 이면 셋 중 어디에 있어도 된다
+  6. 설명 빠짐 (labels.explain) — 본문에서 쓰는 용어·기호가 본문 표시 앞이나 용어 사전에 있는가.
+       "여기 설명이 없다"를 기계적으로 짚을 뿐, 설명이 쉬운지는 판단하지 못한다
 
 실패가 하나라도 있으면 종료 코드 1.
 """
@@ -315,18 +322,22 @@ def load_config(path):
 
 # ── 5. 라벨 인용 ──────────────────────────────────────
 
-ARGS = argparse.Namespace(course=None, lecture=None)
+ARGS = argparse.Namespace(course=None, lectures=None, glossary=None)
 TIME_TOKEN = re.compile(r"(?<![\d:])(\d{1,2}:\d{2}(?::\d{2})?)(?![\d:])")
+TICK_TIME = re.compile(r"`(?:L(\d\d)\s+)?(\d\d):(\d\d)(?:\s*[–-]\s*(\d\d):(\d\d))?")
 _src_cache = {}
 
 
-def course_lecture(path):
-    if ARGS.course is not None and ARGS.lecture is not None:
-        return ARGS.course, ARGS.lecture
+def course_lectures(path):
+    """(과목, [강 번호…]) — 첫 강이 그 노트의 강. 모르면 (None, [])."""
+    if ARGS.lectures:
+        return ARGS.course, ARGS.lectures
     pat = CONFIG["labels"].get("path")
     rel = os.path.relpath(os.path.abspath(path), CONFIG["dir"])
     m = re.search(pat, rel) if pat else None
-    return (m["course"], int(m["lecture"])) if m else (None, None)
+    if not m:
+        return None, []
+    return m.groupdict().get("course"), [int(m["lecture"])]
 
 
 def source_text(name, spec, course, lecture):
@@ -355,41 +366,92 @@ def source_text(name, spec, course, lecture):
     return text, length
 
 
+def to_sec(parts):
+    p = [int(x) for x in parts]
+    return p[0] * 60 + p[1] if len(p) == 2 else p[0] * 3600 + p[1] * 60 + p[2]
+
+
 def check_labels(path, text, n, fails):
     lab = CONFIG["labels"]
     squash = (lambda s: re.sub(r"\s+", "", s)) if lab.get("match") == "nospace" else norm
-    course, lecture = course_lecture(path)
-    lengths = []
+    course, lectures = course_lectures(path)
+    lengths = {}
     for name, spec in lab["sources"].items():
         quotes = list(re.finditer(re.escape(name) + r"\s*" + spec.get("between", "") + r'"([^"]+)"', text))
         n[name] = len(quotes)
-        if course is None:
+        if not lectures:
             if quotes:
                 fails.append((line_of(text, quotes[0].start()), f"{name} 인용이 있는데 과목·강을 모른다 — --course/--lecture 또는 설정 labels.path"))
             continue
-        src, length = source_text(name, spec, course, lecture)
-        if length is not None:
-            lengths.append(length)
-        if src is None:
-            if spec["type"] == "caption" and lab.get("time") == "range":
-                fails.append((1, f"{name} 자료 없음: {course} {lecture}강"))
+        hays = []
+        for lec in lectures:
+            src, length = source_text(name, spec, course, lec)
+            if length is not None:
+                lengths[lec] = max(lengths.get(lec, 0), length)
+            if src is not None:
+                hays.append(squash(src))
+            elif spec["type"] == "caption" and lab.get("time") == "range" and lec == lectures[0]:
+                fails.append((1, f"{name} 자료 없음: {course or ''} {lec}강".strip()))
+        if not hays:
             for m in quotes:
-                fails.append((line_of(text, m.start()), f"{name} 자료 없음: {course} {lecture}강"))
+                fails.append((line_of(text, m.start()), f"{name} 자료 없음: {course or ''} {lectures[0]}강".strip()))
             continue
-        hay = squash(src)
         for m in quotes:
-            if squash(m.group(1)) not in hay:
+            q = squash(m.group(1))
+            if not any(q in h for h in hays):
                 fails.append((line_of(text, m.start()), f"{name} 인용 불일치: {m.group(1)[:80]}"))
-    if lab.get("time") == "range" and course is not None:
-        times = list(TIME_TOKEN.finditer(text))
-        n["시각"] = len(times)
-        if lengths:
-            limit = max(lengths)
-            for m in times:
-                p = [int(x) for x in m.group(1).split(":")]
-                sec = p[0] * 60 + p[1] if len(p) == 2 else p[0] * 3600 + p[1] * 60 + p[2]
-                if sec > limit:
-                    fails.append((line_of(text, m.start()), f"시각 범위 밖: {m.group(1)} (강의 길이 {limit // 60}:{limit % 60:02d})"))
+    if lab.get("time") == "range" and lectures:
+        slack = lab.get("time_slack", 0)
+        main = lectures[0]
+
+        def over(lec, sec, shown, pos):
+            if lec not in lengths:
+                fails.append((line_of(text, pos), f"L{lec:02d} 길이를 모른다 (--lectures 에 없음): {shown}"))
+            elif sec > lengths[lec] + slack:
+                L = lengths[lec]
+                fails.append((line_of(text, pos), f"시각 범위 밖: {shown} (강의 길이 {L // 60}:{L % 60:02d})"))
+
+        count = 0
+        if lab.get("time_tokens") == "backtick":       # `03:13` · `00:00–01:26` · `L01 03:13`
+            for m in TICK_TIME.finditer(text):
+                lec = int(m.group(1)) if m.group(1) else main
+                for mm, ss in ((m.group(2), m.group(3)), (m.group(4), m.group(5))):
+                    if mm is not None:
+                        count += 1
+                        over(lec, to_sec((mm, ss)), f"{mm}:{ss}", m.start())
+        else:                                           # 글 어디서나 mm:ss · hh:mm:ss
+            for m in TIME_TOKEN.finditer(text):
+                count += 1
+                if lengths:
+                    over(main, to_sec(m.group(1).split(":")), m.group(1), m.start())
+        n["시각"] = count
+    if lab.get("explain") and lectures:
+        check_explain(lab["explain"], text, n, fails)
+
+
+# ── 6. 설명 빠짐 (labels.explain) ──────────────────────
+
+def check_explain(ex, text, n, fails):
+    """본문 표시 앞(설명 구역)·용어 사전에 없는 용어·기호를 본문에서 쓰면 짚는다."""
+    body = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)
+    marker = ex.get("marker", "# ② 본문")
+    cut = body.find(marker)
+    if cut < 0:   # 표시를 못 찾으면 검사가 통째로 통과해 버리므로(fail open) 실패로 본다
+        fails.append((1, f"본문 표시 '{marker}'를 찾지 못했다 — 설명 구역을 가를 수 없다"))
+        intro, rest = "", body
+    else:
+        intro, rest = body[:cut], body[cut:]
+    gl = ARGS.glossary or ex.get("glossary")
+    if gl:
+        with open(os.path.join(CONFIG["dir"], os.path.expanduser(gl)) if not ARGS.glossary else gl, encoding="utf-8") as f:
+            intro += "\n" + f.read()
+    miss = [t for t in ex.get("terms", []) if t in rest and t not in intro]
+    msym = [name for sym, name in ex.get("symbols", {}).items() if sym in rest and sym not in intro]
+    n["설명"] = len(ex.get("terms", [])) + len(ex.get("symbols", {}))
+    if miss:
+        fails.append((1, f"용어 — 본문에서 쓰는데 앞부분에 설명이 없다: {miss}"))
+    if msym:
+        fails.append((1, f"기호 — 본문에서 쓰는데 앞부분에 없다: {msym}"))
 
 
 def main():
@@ -399,11 +461,14 @@ def main():
     ap.add_argument("--config")
     ap.add_argument("--course")
     ap.add_argument("--lecture", type=int)
+    ap.add_argument("--lectures", type=int, nargs="+", help="인용 출처로 허용할 강 (첫 번째가 그 노트의 강)")
+    ap.add_argument("--glossary", help="용어 사전 md — 여기 설명이 있으면 노트에 없어도 통과")
     a = ap.parse_args()
     if not a.notes and a.all is None:
         print(__doc__)
         sys.exit(2)
-    ARGS.course, ARGS.lecture = a.course, a.lecture
+    ARGS.course, ARGS.glossary = a.course, a.glossary
+    ARGS.lectures = a.lectures or ([a.lecture] if a.lecture is not None else None)
     cfg = a.config or find_config(a.notes[0] if a.notes else (a.all or os.getcwd())) or find_config(os.getcwd())
     if cfg:
         load_config(cfg)

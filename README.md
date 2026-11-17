@@ -12,8 +12,8 @@ Gilbert Strang의 MIT OCW 강의 *A 2020 Vision of Linear Algebra* 00번 영상(
 | `experiments/2026-09-22_vision00_directive-prompt.md` | 모델에 보낸 지시서. 노트의 절 순서, 인용 규칙(번역 먼저, 원문과 영상 시각은 아래), 검산 주석 규칙, 자막 전문이 들어 있습니다 |
 | `experiments/results/A.md` ~ `E.md` | 다섯 모델이 쓴 노트 원문. 어느 모델인지는 `labels.json`에 있습니다 |
 | `experiments/2026-09-23_blind-read.md` | 블라인드로 읽은 소감, 봉인 해제, 원문과 대조해 확인한 문제점, 결론 |
-| `tools/check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 행렬 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강의 목록, 라벨 인용(`원문 "…"`), PDF 자료, 시각 범위 검사, 공백 무시 대조(한국어 자막용)를 켤 수 있습니다 |
-| `tools/vtt_text.py` | 자막을 읽기 좋은 평문으로 바꿉니다. 사람이 단 VTT, YouTube 자동 자막(yt-dlp), SRT(whisper 출력 등)를 읽습니다 |
+| `tools/check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 행렬 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강의 목록, 라벨 인용(`원문 "…"`, 여러 강의 중 어디든), PDF 자료, 시각 범위 검사, 공백 무시 대조(한국어 자막용), 용어·기호 설명 빠짐 검사를 켤 수 있습니다 |
+| `tools/vtt_text.py` | 자막을 읽기 좋은 평문으로 바꿉니다. 사람이 단 VTT, YouTube 자동 자막(yt-dlp), SRT(whisper 출력 등), youtube_transcript_api 출력을 읽습니다 |
 | `tools/run_gateway.py` | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다 |
 | `lectures/Strang_2020_vision_LA/` | 검사기가 쓰는 00번 영상 자막 |
 
