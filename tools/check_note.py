@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""노트의 기계 검사 — 커밋 전에 돌린다 .
+"""노트의 기계 검사 — 커밋 전에 돌린다.
 
     python3 tools/check_note.py <노트.md> [<노트.md> …]
+    python3 tools/check_note.py --all [폴더]          # 폴더(기본: 설정의 "all") 아래 모든 .md
+    python3 tools/check_note.py <노트.md> --course 과목 --lecture N   # 라벨 인용의 과목·강을 직접 줄 때
 
 검사하는 것
   1. 자막 인용  "…" `[Vision NN mm:ss]`   (좌표가 앞에 오는 꼴 `[…]` "…" 도 읽는다. 같은 줄이어야 한다)
@@ -25,11 +27,40 @@
 검사하지 **못하는** 것: 책 인용(스캔본이라 텍스트 층이 깨짐 — 쪽 이미지로 사람이/Claude가 대조),
 번역이 맞는가, 설명이 개념적으로 옳은가. 그것은 커밋 후 모델 검토와 사용자의 몫이다.
 
+설정 파일 check_note.json — 노트가 있는 폴더에서 위로(git 저장소 뿌리까지), 없으면 현재 폴더에서
+찾는다. --config 로 직접 줄 수도 있다. 없으면 이 저장소의 lectures/ 만 쓴다. 경로의 ~ 와 상대 경로
+(설정 파일 기준)를 읽는다.
+
+    {
+      "lectures": {"Vision": "lectures/Strang_2020_vision_LA",
+                   "SC1": {"dir": "…/Strang_2011_18.06SC", "index": "index_unit1.tsv"}},
+      "all": "books",
+      "labels": {                                  # 5. 라벨 인용 — 원문 "…" · 강의록 3쪽 "…"
+        "root": "~/자료",
+        "path": "(?P<course>[^/]+)/notes/L(?P<lecture>\\d+)",   # 노트 경로에서 과목·강 읽기
+        "match": "nospace",                        # 공백을 모두 지우고 대조 (기본 "space": 하나로 맞춤)
+        "time": "range",                           # 노트의 mm:ss·hh:mm:ss 가 강의 길이 안인가
+        "sources": {
+          "원문":   {"type": "caption", "files": ["{course}/scripts/*{lecture:02d}강*.srt"]},
+          "강의록": {"type": "pdf", "files": ["{course}/강의록/*_{lecture}강_강의록.pdf"],
+                     "between": "(?:\\d+쪽\\s*)?"}
+        }
+      }
+    }
+
+  5. 라벨 인용 (labels 가 있을 때)
+       - 라벨 "…" 의 글이 그 과목·강의 자료에 있는가. caption 은 자막(VTT·SRT), pdf 는 pdftotext 로 뽑은 글
+       - files 는 차례로 찾아 처음 맞는 파일을 쓴다
+
 실패가 하나라도 있으면 종료 코드 1.
 """
+import argparse
 import csv
+import glob
+import json
 import os
 import re
+import subprocess
 import sys
 from fractions import Fraction
 
@@ -43,6 +74,8 @@ LECTURES_DIR = os.environ.get(
 LECTURES = {
     "Vision": os.path.join(LECTURES_DIR, "Strang_2020_vision_LA"),
 }
+CONFIG = {"dir": os.getcwd(), "all": None, "labels": None}
+CONFIG_NAME = "check_note.json"
 
 COORD = r"\[(?P<key>[A-Za-z0-9.]+) (?P<no>\d{2}) (?P<t>\d{2}:\d{2})\]"
 QUOTE = re.compile(r"\"(?P<q>[^\"\n]+)\"[ \t]*`" + COORD + r"`")
@@ -241,19 +274,151 @@ def check_file(path):
         err = check_expr(norm(m["expr"]))
         if err:
             fails.append((line_of(text, m.start()), f"검산 {err}"))
+    if CONFIG["labels"]:
+        check_labels(path, text, n, fails)
     return n, fails
 
 
+# ── 설정 ──────────────────────────────────────────────
+
+def find_config(start):
+    d = os.path.abspath(start if os.path.isdir(start) else os.path.dirname(start) or ".")
+    while True:
+        p = os.path.join(d, CONFIG_NAME)
+        if os.path.isfile(p):
+            return p
+        if os.path.isdir(os.path.join(d, ".git")) or os.path.dirname(d) == d:
+            return None
+        d = os.path.dirname(d)
+
+
+def load_config(path):
+    base = os.path.dirname(os.path.abspath(path))
+
+    def where(p):
+        return os.path.join(base, os.path.expanduser(p))
+
+    with open(path, encoding="utf-8") as f:
+        c = json.load(f)
+    CONFIG["dir"] = base
+    if "lectures" in c:
+        LECTURES.clear()
+        for key, v in c["lectures"].items():
+            LECTURES[key] = (where(v["dir"]), v.get("index", "index.tsv")) if isinstance(v, dict) else where(v)
+    if c.get("all"):
+        CONFIG["all"] = where(c["all"])
+    if c.get("labels"):
+        lab = dict(c["labels"])
+        lab["root"] = where(lab.get("root", "."))
+        CONFIG["labels"] = lab
+
+
+# ── 5. 라벨 인용 ──────────────────────────────────────
+
+ARGS = argparse.Namespace(course=None, lecture=None)
+TIME_TOKEN = re.compile(r"(?<![\d:])(\d{1,2}:\d{2}(?::\d{2})?)(?![\d:])")
+_src_cache = {}
+
+
+def course_lecture(path):
+    if ARGS.course is not None and ARGS.lecture is not None:
+        return ARGS.course, ARGS.lecture
+    pat = CONFIG["labels"].get("path")
+    rel = os.path.relpath(os.path.abspath(path), CONFIG["dir"])
+    m = re.search(pat, rel) if pat else None
+    return (m["course"], int(m["lecture"])) if m else (None, None)
+
+
+def source_text(name, spec, course, lecture):
+    """(대조용 글, 강의 길이 초 또는 None) — 자료가 없으면 (None, None)."""
+    k = (name, course, lecture)
+    if k in _src_cache:
+        return _src_cache[k]
+    root = CONFIG["labels"]["root"]
+    found = None
+    for pat in spec["files"]:
+        hits = sorted(glob.glob(os.path.join(root, pat.format(course=course, lecture=lecture))))
+        if hits:
+            found = hits[0]
+            break
+    text = length = None
+    if found and spec["type"] == "caption":
+        cues = parse(found)
+        text = " ".join(t for _, _, t in cues)
+        length = int(max((e for _, e, _ in cues), default=0))
+    elif found and spec["type"] == "pdf":
+        try:
+            text = subprocess.run(["pdftotext", found, "-"], capture_output=True, text=True).stdout
+        except OSError:
+            text = None
+    _src_cache[k] = (text, length)
+    return text, length
+
+
+def check_labels(path, text, n, fails):
+    lab = CONFIG["labels"]
+    squash = (lambda s: re.sub(r"\s+", "", s)) if lab.get("match") == "nospace" else norm
+    course, lecture = course_lecture(path)
+    lengths = []
+    for name, spec in lab["sources"].items():
+        quotes = list(re.finditer(re.escape(name) + r"\s*" + spec.get("between", "") + r'"([^"]+)"', text))
+        n[name] = len(quotes)
+        if course is None:
+            if quotes:
+                fails.append((line_of(text, quotes[0].start()), f"{name} 인용이 있는데 과목·강을 모른다 — --course/--lecture 또는 설정 labels.path"))
+            continue
+        src, length = source_text(name, spec, course, lecture)
+        if length is not None:
+            lengths.append(length)
+        if src is None:
+            if spec["type"] == "caption" and lab.get("time") == "range":
+                fails.append((1, f"{name} 자료 없음: {course} {lecture}강"))
+            for m in quotes:
+                fails.append((line_of(text, m.start()), f"{name} 자료 없음: {course} {lecture}강"))
+            continue
+        hay = squash(src)
+        for m in quotes:
+            if squash(m.group(1)) not in hay:
+                fails.append((line_of(text, m.start()), f"{name} 인용 불일치: {m.group(1)[:80]}"))
+    if lab.get("time") == "range" and course is not None:
+        times = list(TIME_TOKEN.finditer(text))
+        n["시각"] = len(times)
+        if lengths:
+            limit = max(lengths)
+            for m in times:
+                p = [int(x) for x in m.group(1).split(":")]
+                sec = p[0] * 60 + p[1] if len(p) == 2 else p[0] * 3600 + p[1] * 60 + p[2]
+                if sec > limit:
+                    fails.append((line_of(text, m.start()), f"시각 범위 밖: {m.group(1)} (강의 길이 {limit // 60}:{limit % 60:02d})"))
+
+
 def main():
-    args = sys.argv[1:]
-    if not args:
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("notes", nargs="*")
+    ap.add_argument("--all", nargs="?", const="", default=None)
+    ap.add_argument("--config")
+    ap.add_argument("--course")
+    ap.add_argument("--lecture", type=int)
+    a = ap.parse_args()
+    if not a.notes and a.all is None:
         print(__doc__)
         sys.exit(2)
+    ARGS.course, ARGS.lecture = a.course, a.lecture
+    cfg = a.config or find_config(a.notes[0] if a.notes else (a.all or os.getcwd())) or find_config(os.getcwd())
+    if cfg:
+        load_config(cfg)
+    args = list(a.notes)
+    if a.all is not None:
+        root = os.path.abspath(a.all) if a.all else CONFIG["all"]
+        if not root:
+            sys.exit("--all: 폴더를 주거나 설정에 \"all\"을 둘 것")
+        args += sorted(os.path.join(d, f) for d, _, fs in os.walk(root) for f in fs if f.endswith(".md"))
     bad = 0
     for path in args:
         n, fails = check_file(path)
         tag = "FAIL" if fails else "ok  "
-        print(f"{tag} {os.path.relpath(path)} — 인용 {n['인용']} · 좌표 {n['좌표']} · 검산 {n['검산']}")
+        extra = "".join(f" · {k} {v}" for k, v in n.items() if k not in ("인용", "좌표", "검산"))
+        print(f"{tag} {os.path.relpath(path)} — 인용 {n['인용']} · 좌표 {n['좌표']} · 검산 {n['검산']}{extra}")
         for ln, err in fails:
             print(f"     {ln}행: {err}")
         bad += len(fails)
