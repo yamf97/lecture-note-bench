@@ -14,6 +14,7 @@ Gilbert Strang의 MIT OCW 강의 *A 2020 Vision of Linear Algebra* 00번 영상(
 | `experiments/2026-09-23_blind-read.md` | 블라인드로 읽은 소감, 봉인 해제, 원문과 대조해 확인한 문제점, 결론 |
 | `tools/check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 행렬 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강의 목록, 라벨 인용(`원문 "…"`, 여러 강의 중 어디든), PDF 자료, 시각 범위 검사, 공백 무시 대조(한국어 자막용), 용어·기호 설명 빠짐 검사를 켤 수 있습니다 |
 | `tools/vtt_text.py` | 자막을 읽기 좋은 평문으로 바꿉니다. 사람이 단 VTT, YouTube 자동 자막(yt-dlp), SRT(whisper 출력 등), youtube_transcript_api 출력을 읽습니다 |
+| `tools/fetch.py` | YouTube에서 강의 자막(필요하면 영상·음성)을 받습니다. 강의당 요청 1번, 20–40초 무작위 대기, 차단 응답이면 즉시 멈춤, 다시 돌리면 이어받기. 재생목록·id 목록은 강좌 폴더의 `fetch.json`, 한 편은 `--url`. 자막이 없으면 `--transcribe-missing`으로 로컬 전사 |
 | `tools/transcribe.py` | 자막이 없는 강의의 음성·영상을 로컬 whisper(whisper.cpp)로 받아써 SRT를 만듭니다. 밖으로 보내는 것 없이 이 컴퓨터에서만 돕니다. 결과는 `vtt_text.py`·`check_note.py`가 그대로 읽습니다 |
 | `tools/frames.py` | 강의 영상에서 판서·슬라이드 장면을 시각과 함께 뽑습니다. 화면이 크게 바뀌기 **직전**(지우기 전 가득 찬 칠판)을 고르고, 빈 구간은 간격으로 채우고, 같은 장면은 버립니다. `--at`으로 직접 고를 수도 있습니다. 장면 감지는 [claude-video](https://github.com/bradautomates/claude-video)(MIT)의 방식을 참고했습니다 |
 | `tools/run_gateway.py` | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다 |
@@ -47,6 +48,9 @@ python3 tools/check_note.py 노트.md --course 과목 --lecture 3
 
 # 자막을 평문으로 (정확한 시각은 --cues)
 python3 tools/vtt_text.py lectures/Strang_2020_vision_LA/00-intro.vtt --cues
+
+# 강의 한 편 받기 (자막 + 판서용 영상, 자막 없으면 로컬 전사)
+python3 tools/fetch.py --url <영상 주소> -o 강좌폴더 --video --transcribe-missing -l ko
 
 # 자막이 없으면 음성을 받아씁니다 (whisper-cli·ffmpeg·ggml 모델 필요) → "강의 (whisper).srt"
 python3 tools/transcribe.py 강의.mp3 -l ko
