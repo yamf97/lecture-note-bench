@@ -62,6 +62,7 @@
 실패가 하나라도 있으면 종료 코드 1.
 """
 import argparse
+import ast
 import csv
 import glob
 import json
@@ -84,7 +85,7 @@ LECTURES = {
 CONFIG = {"dir": os.getcwd(), "all": None, "labels": None}
 CONFIG_NAME = "check_note.json"
 
-COORD = r"\[(?P<key>[A-Za-z0-9.]+) (?P<no>\d{2}) (?P<t>\d{2}:\d{2})\]"
+COORD = r"\[(?P<key>[A-Za-z0-9.]+) (?P<no>\d{2}) (?P<t>\d{2,3}:\d{2})\]"
 QUOTE = re.compile(r"\"(?P<q>[^\"\n]+)\"[ \t]*`" + COORD + r"`")
 PRE = re.compile(r"`" + COORD + r"`[ \t]*\"(?P<q>[^\"\n]+)\"")
 FENCE = re.compile(r"^(`{3,})[^\n]*\n.*?^\1[ \t]*$", re.S | re.M)
@@ -198,9 +199,59 @@ def check_bare(key, no, t, block=0):
     return None
 
 
+_EXPR_NODES = (
+    ast.Expression, ast.Compare, ast.Eq, ast.BinOp, ast.Add, ast.Sub, ast.Mult, ast.Div,
+    ast.Pow, ast.UnaryOp, ast.USub, ast.UAdd, ast.Constant, ast.List, ast.Tuple, ast.Name,
+    ast.Load, ast.Call, ast.Attribute, ast.Subscript,
+)
+_EXPR_ATTRS = {"T", "shape"}
+_NUM_STR = re.compile(r"\s*[-+]?\d{1,40}(\.\d{1,40})?(\s*/\s*\d{1,40})?\s*")
+
+
+def unsafe_expr(expr):
+    """검산식이 허용한 문법(M·F, 사칙·거듭제곱, .T·.shape, 숫자)만 쓰는지. 아니면 이유를 돌려준다.
+
+    노트는 남이 쓴 것일 수도 있다 — eval 전에 걸러야 `M.__init__.__globals__` 같은 탈출을 막는다.
+    """
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        return f"문법 오류 ({e.msg})"
+    for node in ast.walk(tree):
+        if not isinstance(node, _EXPR_NODES):
+            return f"허용하지 않는 문법: {type(node).__name__}"
+        if isinstance(node, ast.Name) and node.id not in ("M", "F"):
+            return f"허용하지 않는 이름: {node.id}"
+        if isinstance(node, ast.Attribute) and node.attr not in _EXPR_ATTRS:
+            return f"허용하지 않는 속성: .{node.attr}"
+        if isinstance(node, ast.Call) and not (isinstance(node.func, ast.Name) and not node.keywords):
+            return "M(…)·F(…) 말고는 부를 수 없다"
+        if isinstance(node, ast.Constant) and type(node.value) not in (int, float, str):  # bool 제외
+            return f"허용하지 않는 값: {node.value!r}"
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and not _NUM_STR.fullmatch(node.value):
+            # "1e999999999" 같은 지수 표기는 Fraction 안에서 거대한 10**n 을 만든다
+            return f"문자열은 정수·소수·분수 꼴만: {node.value[:20]!r}"
+        if isinstance(node, ast.BinOp):
+            # 문자열·목록은 M(…)·F(…) 인자로만 — "x" * 2**29 같은 대량 할당을 막는다
+            for side in (node.left, node.right):
+                if isinstance(side, (ast.List, ast.Tuple)) or (
+                        isinstance(side, ast.Constant) and isinstance(side.value, str)):
+                    return "문자열·목록은 M(…)·F(…) 안에서만"
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            if not (isinstance(node.right, ast.Constant) and isinstance(node.right.value, int)
+                    and abs(node.right.value) <= 64):
+                return "거듭제곱 지수는 64 이하 정수만"
+            if any(isinstance(x, ast.BinOp) and isinstance(x.op, ast.Pow) for x in ast.walk(node.left)):
+                return "거듭제곱은 겹쳐 쓸 수 없다"
+    return None
+
+
 def check_expr(expr):
     if expr.count("==") != 1:
         return "검산식에는 == 가 정확히 하나 있어야 한다"
+    bad = unsafe_expr(expr)
+    if bad:
+        return f"계산 불가 ({bad})"
     try:
         ok = eval(expr, {"__builtins__": {}}, {"M": M, "F": Fraction})
     except Exception as e:  # 검산식 자체가 틀린 것도 실패다
@@ -323,7 +374,7 @@ def load_config(path):
 # ── 5. 라벨 인용 ──────────────────────────────────────
 
 ARGS = argparse.Namespace(course=None, lectures=None, glossary=None)
-TIME_TOKEN = re.compile(r"(?<![\d:])(\d{1,2}:\d{2}(?::\d{2})?)(?![\d:])")
+TIME_TOKEN = re.compile(r"(?<![\d:])(\d{1,3}:\d{2}(?::\d{2})?)(?![\d:])")
 TICK_TIME = re.compile(r"`(?:L(\d\d)\s+)?(\d\d):(\d\d)(?:\s*[–-]\s*(\d\d):(\d\d))?")
 _src_cache = {}
 
