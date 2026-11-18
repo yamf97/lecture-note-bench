@@ -440,6 +440,25 @@ class Setup(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("끊어진 링크", out)
 
+    def test_directory_at_destination_is_reported_not_crashed(self):
+        os.makedirs(self.dest)
+        ok, out = self.run_ensure()
+        self.assertFalse(ok)
+        self.assertIn("보통 파일이 아니다", out)
+        self.assertTrue(os.path.isdir(self.dest))
+
+    def test_unreadable_model_is_reported_not_crashed(self):
+        os.makedirs(self.dir)
+        with open(self.dest, "wb") as f:
+            f.write(b"x")
+        os.chmod(self.dest, 0)
+        self.addCleanup(os.chmod, self.dest, 0o644)
+        if os.access(self.dest, os.R_OK):
+            self.skipTest("root 는 권한을 무시한다")
+        ok, out = self.run_ensure()
+        self.assertFalse(ok)
+        self.assertIn("읽지 못했다", out)
+
     def test_pinned_url_names_commit_and_file(self):
         self.assertIn("/resolve/" + setup_env.MODEL_COMMIT + "/", setup_env.MODEL_URL)
         self.assertTrue(setup_env.MODEL_URL.endswith(setup_env.MODEL_NAME))

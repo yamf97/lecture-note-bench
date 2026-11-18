@@ -97,8 +97,17 @@ def ensure_model(model_dir, yes, ask=input, out=sys.stdout,
         if not os.path.exists(dest):
             print(f"없음  모델          {dest} 는 끊어진 링크다 — 지우고 다시 lnb setup", file=out)
             return False
+        if not os.path.isfile(dest):
+            print(f"주의  모델          {dest} 가 보통 파일이 아니다 (폴더 등) — 건드리지 않았다.\n"
+                  "      옮기거나 지우고 다시 lnb setup.", file=out)
+            return False
         print("확인  모델 SHA256 …", file=out, flush=True)
-        if sha256_of(dest) == sha256:
+        try:
+            digest = sha256_of(dest)
+        except OSError as e:
+            print(f"주의  모델          {dest} 를 읽지 못했다 ({e}) — 건드리지 않았다.", file=out)
+            return False
+        if digest == sha256:
             print(f"OK    모델          {dest} (SHA256 일치)", file=out)
             return True
         print(f"주의  모델          {dest} 의 SHA256 이 lnb 가 아는 값과 다르다.\n"
