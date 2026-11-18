@@ -44,9 +44,11 @@ else
   bad "CHANGELOG at $tag has no '## $tv' section"
 fi
 readme="$(git show "$tag:README.md" 2>/dev/null)"
-if printf '%s' "$readme" | grep -q "최신 버전 $tv" && printf '%s' "$readme" | grep -q "Latest: $tv"; then
+# Notice wording: "최신 버전 X"/"Latest: X" up to 0.2.0, "X 버전이 나왔습니다"/"Version X is out" from 0.3.0
+if printf '%s' "$readme" | grep -qE "최신 버전 $tv|$tv 버전이 나왔습니다" \
+   && printf '%s' "$readme" | grep -qE "Latest: $tv|Version $tv is out"; then
   ok "README at $tag names $tv (KO, EN)"
-elif printf '%s' "$readme" | grep -q "최신 버전\|Latest:"; then
+elif printf '%s' "$readme" | grep -qE "최신 버전|버전이 나왔습니다|Latest:|Version [0-9.]+ is out"; then
   bad "README at $tag names a different version in its latest-version lines"
 else
   echo "  note  README at $tag has no latest-version lines (added after 0.2.0)"

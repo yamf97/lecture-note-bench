@@ -2,7 +2,13 @@
 
 [English](#english)
 
-> **최신 버전 0.2.0** (2026-11-18) — 교재 인용 검사가 들어왔습니다. 새 명령 `lnb pages`로 교재·강의록을 쪽 표시가 든 원문으로 만들면, `lnb check`가 노트의 교재 인용을 그 쪽과 대조합니다. 설치한 `lnb check`는 이제 저장소마다 `check_note.json`이 필요합니다. 바뀐 점 전체는 [CHANGELOG.md](CHANGELOG.md), 업데이트는 `pipx upgrade lecture-note-bench`
+> **0.3.0 버전이 나왔습니다** (2026-11-18)
+>
+> 좋아진 점
+> - **0.3.0**: 녹음·영상을 글로 받아쓰는(전사) 준비를 명령 하나 `lnb setup`으로 합니다. 음성인식 모델을 받아 파일이 깨지거나 바뀌지 않았는지까지 확인합니다.
+> - 0.2.0: 노트에 인용한 교재 문장이 정말 그 쪽에 있는지 `lnb check`가 검사합니다.
+>
+> 업데이트: `pipx upgrade lecture-note-bench` · 버전별 바뀐 점 전체: [CHANGELOG.md](CHANGELOG.md)
 
 강의 영상으로 **근거를 지키는 학습 노트**를 만드는 도구와, 그 방법을 시험한 실험입니다.
 
@@ -74,7 +80,7 @@ lnb setup       # 받아쓰기를 쓸 때만: whisper 모델을 받고 SHA256으
 ```
 
 - 패키지 이름은 `lecture-note-bench`, 명령은 `lnb`입니다. Python 3.9 이상
-- 버전별 바뀐 점은 [CHANGELOG.md](CHANGELOG.md). 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`, 최신으로: `pipx upgrade lecture-note-bench`
+- 버전별 바뀐 점은 [CHANGELOG.md](CHANGELOG.md). 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`, 최신으로: `pipx upgrade lecture-note-bench`
 - **macOS에서 만들고 시험했습니다.** 리눅스·윈도우는 아직 시험하지 않았습니다 (파이썬과 바깥 프로그램은 거기에도 있지만, 설치 안내와 한글 출력 등은 확인 전입니다)
 - yt-dlp·youtube-transcript-api는 같이 깔립니다. ffmpeg·whisper-cli·pdftotext 같은 바깥 프로그램은 `lnb doctor`가 없는 것과 설치법을 알려 줍니다 (macOS: `brew install ffmpeg whisper-cpp poppler`)
 - **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 `lnb setup`을 한 번 실행합니다:
@@ -199,7 +205,13 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 ## English
 
-> **Latest: 0.2.0** (2026-11-18). This version adds the textbook quote check: the new `lnb pages` command turns a textbook or handout into page-marked text, and `lnb check` then checks textbook quotes against the cited page. An installed `lnb check` now needs a `check_note.json` in each repository. See [CHANGELOG.md](CHANGELOG.md) for all changes, and update with `pipx upgrade lecture-note-bench`.
+> **Version 0.3.0 is out** (2026-11-18)
+>
+> What got better:
+> - **0.3.0**: one command, `lnb setup`, prepares transcription (turning a recording into text). It downloads the speech-recognition model and checks that the file is intact and unaltered.
+> - 0.2.0: `lnb check` can check that a textbook sentence quoted in a note really appears on the cited page.
+>
+> Update with `pipx upgrade lecture-note-bench`. All changes by version: [CHANGELOG.md](CHANGELOG.md)
 
 ### What this is
 
@@ -241,7 +253,7 @@ lnb setup    # only for transcribe: downloads the whisper model and verifies its
 ```
 
 - Requires Python 3.9+. **Built and tested on macOS only**; Linux and Windows are untested.
-- Changes by version are in [CHANGELOG.md](CHANGELOG.md). To pin a version, use `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`; to update, use `pipx upgrade lecture-note-bench`.
+- Changes by version are in [CHANGELOG.md](CHANGELOG.md). To pin a version, use `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`; to update, use `pipx upgrade lecture-note-bench`.
 - You need a whisper model only for `transcribe`. `lnb setup` asks before downloading `ggml-large-v3-turbo-q5_0.bin` (about 574 MB) from a commit-pinned Hugging Face URL, and keeps it in `~/.cache/whisper.cpp/` only if its size and SHA256 match. It never installs programs; it prints the `brew` command instead. To use another model, put a ggml file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
 - You can run the tools without installing: `python3 tools/<file>.py`. The files are `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py` and `check_note.py` (`check`); `setup` and `doctor` need the installed `lnb`.
 
