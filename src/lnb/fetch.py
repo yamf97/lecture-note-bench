@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """강의 자막(과 필요하면 영상·음성)을 YouTube에서 받는다 — 막히지 않게 천천히, 이어받기로.
 
-    python3 tools/fetch.py <강좌 폴더> [--max 10]      # 폴더의 fetch.json 대로 (재생목록·id 목록)
-    python3 tools/fetch.py <강좌 폴더> --max 0          # 네트워크 없이 plain·failed.tsv·TOC.md 만 갱신
-    python3 tools/fetch.py --url <영상 주소> -o <폴더> [--video] [--transcribe-missing]   # 한 편
+    lnb fetch <강좌 폴더> [--max 10]      # 폴더의 fetch.json 대로 (재생목록·id 목록)
+    lnb fetch <강좌 폴더> --max 0          # 네트워크 없이 plain·failed.tsv·TOC.md 만 갱신
+    lnb fetch --url <영상 주소> -o <폴더> [--video] [--transcribe-missing]   # 한 편
+    (설치하지 않았으면 저장소에서 `lnb fetch` 대신 `python3 tools/fetch.py`)
 
 강좌 폴더의 fetch.json (예):
     {"series": "Ben Lambert - A graduate course in econometrics",
@@ -20,9 +21,9 @@
   4. 한 번에 받을 수를 --max 로 제한. 다시 돌리면 raw 가 없는 강의부터 이어받는다
   판정은 종료코드가 아니라 **내용**으로 한다 — youtube_transcript_api 는 실패해도 0 을 낸다
 
-자막이 없을 때: --transcribe-missing 이면 음성만 받아 transcribe.py(로컬 whisper)로 raw/<이름> (whisper).srt.
---video 면 video/<이름>.mp4 (720p 이하)도 받는다 — frames.py 로 판서 장면을 뽑을 때.
-결과 파일은 vtt_text.py · check_note.py 가 그대로 읽는다.
+자막이 없을 때: --transcribe-missing 이면 음성만 받아 lnb transcribe(로컬 whisper)로 raw/<이름> (whisper).srt.
+--video 면 video/<이름>.mp4 (720p 이하)도 받는다 — lnb frames 로 판서 장면을 뽑을 때.
+결과 파일은 lnb text · lnb check 가 그대로 읽는다.
 
 필요한 것: yt-dlp · (via transcript-api 면) youtube_transcript_api · (전사 시) ffmpeg·whisper-cli.
 

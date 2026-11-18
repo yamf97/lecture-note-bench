@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """강의 음성·영상을 로컬 whisper로 받아써 SRT 자막을 만든다 — 자막이 없는 강의용.
 
-    python3 tools/transcribe.py <강의.mp3|.m4a|.mp4|…> [<파일> …]
-    python3 tools/transcribe.py 강의.mp4 -l ko -o 자막폴더
-    python3 tools/transcribe.py 강의.mp3 -m ~/models/ggml-large-v3-turbo-q5_0.bin
+    lnb transcribe <강의.mp3|.m4a|.mp4|…> [<파일> …]
+    lnb transcribe 강의.mp4 -l ko -o 자막폴더
+    lnb transcribe 강의.mp3 -m ~/models/ggml-large-v3-turbo-q5_0.bin
+    (설치하지 않았으면 저장소에서 `lnb transcribe` 대신 `python3 tools/transcribe.py`)
 
-결과: <이름> (whisper).srt  — vtt_text.py · check_note.py 가 그대로 읽는다.
+결과: <이름> (whisper).srt  — lnb text · lnb check 가 그대로 읽는다.
 이미 있으면 건너뛴다 (--force 로 다시).
 
 필요한 것 (밖으로 보내는 것 없음, 이 컴퓨터에서만 돈다):

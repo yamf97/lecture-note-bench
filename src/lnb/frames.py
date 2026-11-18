@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """강의 영상에서 판서·슬라이드 장면을 시각과 함께 뽑는다 — 판서를 노트(LaTeX)로 옮길 때 쓴다.
 
-    python3 tools/frames.py 강의.mp4                     # 자동: 화면이 크게 바뀌기 직전 장면
-    python3 tools/frames.py 강의.mp4 --at 05:32,12:00    # 직접: 그 시각의 장면만
-    python3 tools/frames.py 강의.mp4 --every 30          # 일정 간격(초)으로
-    python3 tools/frames.py 강의.mp4 --from 10:00 --to 20:00 -o 판서
+    lnb frames 강의.mp4                     # 자동: 화면이 크게 바뀌기 직전 장면
+    lnb frames 강의.mp4 --at 05:32,12:00    # 직접: 그 시각의 장면만
+    lnb frames 강의.mp4 --every 30          # 일정 간격(초)으로
+    lnb frames 강의.mp4 --from 10:00 --to 20:00 -o 판서
+    (설치하지 않았으면 저장소에서 `lnb frames` 대신 `python3 tools/frames.py`)
 
 결과: <영상 이름>_frames/ 안에 mm-ss.jpg 와 index.tsv (초 · mm:ss · 왜 뽑았나 · 파일).
 시각은 자막 [mm:ss] 좌표와 같은 기준(영상 시작부터)이다.

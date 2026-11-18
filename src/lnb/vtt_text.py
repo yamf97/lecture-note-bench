@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """vtt 자막을 읽기 좋은 평문으로 바꾼다.
 
-    python3 tools/vtt_text.py <파일.vtt>            # 30초 단위로 묶어 [mm:ss] 문장…
-    python3 tools/vtt_text.py <파일.vtt> --cues     # 큐 하나에 한 줄 (정확한 시각)
-    python3 tools/vtt_text.py <파일.vtt> --from 03:00 --to 06:30
+    lnb text <파일.vtt>            # 30초 단위로 묶어 [mm:ss] 문장…
+    lnb text <파일.vtt> --cues     # 큐 하나에 한 줄 (정확한 시각)
+    lnb text <파일.vtt> --from 03:00 --to 06:30
+    (설치하지 않았으면 저장소에서 `lnb text` 대신 `python3 tools/vtt_text.py`)
 
 주의: 30초로 묶은 좌표는 **구간 시작 시각**이다. 인용에 쓸 정확한 시각은 --cues 로 찾는다.
 YouTube 자동 자막(yt-dlp, 단어별 시각 포함), SRT(whisper 출력 등), youtube_transcript_api 출력

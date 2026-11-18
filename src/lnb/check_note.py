@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """노트의 기계 검사 — 커밋 전에 돌린다.
 
-    python3 tools/check_note.py <노트.md> [<노트.md> …]
-    python3 tools/check_note.py --all [폴더]          # 폴더(기본: 설정의 "all") 아래 모든 .md
-    python3 tools/check_note.py <노트.md> --course 과목 --lecture N   # 라벨 인용의 과목·강을 직접 줄 때
-    python3 tools/check_note.py <노트.md> --lectures 1 2 6 --glossary 사전.md
+    lnb check <노트.md> [<노트.md> …]
+    lnb check --all [폴더]          # 폴더(기본: 설정의 "all") 아래 모든 .md
+    lnb check <노트.md> --course 과목 --lecture N   # 라벨 인용의 과목·강을 직접 줄 때
+    lnb check <노트.md> --lectures 1 2 6 --glossary 사전.md
+    (설치하지 않았으면 저장소에서 `lnb check` 대신 `python3 tools/check_note.py`)
 
 검사하는 것
   1. 자막 인용  "…" `[Vision NN mm:ss]`   (좌표가 앞에 오는 꼴 `[…]` "…" 도 읽는다. 같은 줄이어야 한다)
@@ -148,7 +149,7 @@ def cues_for(key, no):
         return _cache[(key, no)]
     root = LECTURES.get(key)
     if not root:
-        raise KeyError(f"모르는 강좌 키 {key!r} — src/lnb/check_note.py 의 LECTURES 에 등록할 것")
+        raise KeyError(f"모르는 강좌 키 {key!r} — check_note.json 의 lectures 에 등록할 것 (lnb check --help)")
     root, index = root if isinstance(root, tuple) else (root, "index.tsv")
     with open(os.path.join(root, index), encoding="utf-8") as f:
         rows = {r["no"]: r for r in csv.DictReader(f, delimiter="\t")}
