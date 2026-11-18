@@ -1,5 +1,7 @@
 # lecture-note-bench
 
+[English](#english)
+
 강의 영상으로 **근거를 지키는 학습 노트**를 만드는 도구와, 그 방법을 시험한 실험입니다.
 
 - **도구 `lnb`**: 강의 자막·영상을 받아 읽기본과 판서 장면을 만들고, 다 쓴 노트의 인용·시각·계산을 원문과 기계로 대조합니다. `pipx`로 설치하는 명령줄 도구이고 AI 없이도 씁니다 (아래 「설치」)
@@ -193,4 +195,79 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 ---
 
-**In English.** Tools for turning lecture videos into study notes that keep to their sources, plus a small experiment. The code was written with Claude Code; the design, verification rules, experiment and blind judging are mine, and changes go through review by a model from another company (Codex) and regression tests. AI-written commits are marked `[AI:<model>]`. Built and tested on macOS only; Linux and Windows are untested. Install the command-line tool with `pipx install git+https://github.com/yamf97/lecture-note-bench`, then run `lnb --help` and `lnb doctor` (it checks ffmpeg, whisper-cli, pdftotext and the whisper model, and prints install commands). The subcommands fetch captions (and, if needed, video or audio), transcribe locally with whisper.cpp when there are no captions, turn captions into 30-second reading text, pick board and slide frames just before each large change, and check finished notes (a Claude Code skill in `skills/lecture-note/` chains them): every quote must appear verbatim in the captions at the stated time, and inline calculations must hold. In the experiment, five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00 and I read the results blind; the smallest model (a 27B dense model) did best, from a single run, so it is an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `lnb fetch` downloads from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.
+## English
+
+### What this is
+
+Tools for turning lecture videos into **study notes that stay faithful to their sources**, plus a small experiment that tested the method.
+
+- **`lnb` command-line tool**: prepares the raw material (captions, reading text, board and slide frames, page-marked textbook text) and mechanically checks finished notes against it. Works without any AI.
+- **Claude Code skill** (`skills/lecture-note/`): walks Claude Code through the tools in order.
+- **Experiment**: five open-weight models wrote a note from the same instruction sheet, and the results were compared blind.
+
+Note-writing rules are in [METHOD.md](METHOD.md) (Korean). The code was written with Claude Code. I made the design, the verification rules, the experiment and the blind judging. Changes are reviewed by a model from another company (Codex) and covered by regression tests. AI-written commits are marked `[AI:<model>]`.
+
+### Pipeline
+
+```
+lecture URL ─ lnb fetch ─┬─ captions ─────────────────────┐
+                         └─ none → lnb transcribe ────────┼─ lnb text ─ write note ─ lnb check
+        video ─ lnb frames (board / slide frames) ────────┤
+   textbook / slide PDF ─ convert to md ─ lnb pages ──────┘
+```
+
+A person (or an AI) writes the note. The tools prepare the material before writing and check the evidence after it. Board transcriptions cannot be checked automatically. Unclear readings are collected in a table so that a person can compare them with the frame images.
+
+### Writing a note
+
+1. **Read**: get the flow from the 30-second reading text (`lnb text`), and find exact times with `--cues`.
+2. **Quote**: copy quotes verbatim, each followed by its source: video `[Vision 00 01:47]`, textbook `§3.2 p.24`, or board frame `mm:ss`. Mark unclear readings `[원문 미확인]` (unverified) instead of guessing.
+3. **Explain**: tag explanations from outside the source `[외부 추론]` (outside inference), and tag points with no source `[정보 없음]` (not in source).
+4. **Embed checks**: wherever you calculate, embed a check such as `<!-- 검산: M([[1,2],[3,4]]).T == M([[1,3],[2,4]]) -->`.
+5. **Check**: run `lnb check note.md` and fix the note until it passes.
+6. **Review**: a different model reviews what the checker cannot see, such as board math, translations and correctness.
+
+### Install
+
+```bash
+pipx install git+https://github.com/yamf97/lecture-note-bench
+lnb --help
+lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and prints install commands
+```
+
+- Requires Python 3.9+. **Built and tested on macOS only**; Linux and Windows are untested.
+- You need a whisper model only for `transcribe`. Put a ggml model file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
+- You can run the tools without installing: `python3 tools/<tool>.py`.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `lnb fetch` | Downloads captions, plus video or audio if needed. Makes one request per lecture, waits 20–40 s at random, stops immediately if blocked, and resumes on re-run. |
+| `lnb transcribe` | Transcribes audio locally with whisper.cpp when a lecture has no captions. Nothing leaves the machine. |
+| `lnb text` | Turns VTT or SRT captions into 30-second `[mm:ss]` reading text; `--cues` keeps exact cue times. |
+| `lnb frames` | Picks board and slide frames just **before** each large change, such as a full board before erasing. `--scores` helps tune the threshold for each course. |
+| `lnb pages` | Turns textbook or handout text (MinerU JSON or a PDF with a text layer) into page-marked md for quote checking. |
+| `lnb check` | Checks finished notes: video quotes against the captions at the stated time, textbook quotes against the cited page, and embedded calculations. Each repository configures it with `check_note.json`. |
+| `lnb doctor` | Reports missing external programs and models. |
+
+**Textbooks and slides**: convert them to md with existing tools, [MinerU](https://github.com/opendatalab/MinerU) for PDFs (`-b pipeline` is about 6× faster) or [MarkItDown](https://github.com/microsoft/markitdown) for Office files. Then run `lnb pages` and register the result under `books` in `check_note.json`. Do not trust conversions blindly: compare transcribed formulas with the page image. Converted textbooks are copyrighted, so keep them out of public repositories.
+
+### Experiment: five models, read blind
+
+Five open-weight models received the same instruction sheet for a note on Gilbert Strang's *A 2020 Vision of Linear Algebra*, video 00 (MIT OCW). I read the results with the model names hidden.
+
+- All five filled the given structure. The remaining flaws were paraphrase, conclusions placed before their evidence, and format violations, **the kind a human reader has to catch**.
+- The smallest model, `qwen/qwen3.8-27b` (dense), did best. Size did not track quality.
+- This was one task with one run per model, so it is an observation, not a conclusion.
+
+The details are in `experiments/` (Korean).
+
+### Downloading responsibly
+
+Use `lnb fetch` only for material you have the right or permission to download, such as CC-licensed OCW lectures or your own videos. Follow each site's terms and each video's license, and do not redistribute what you download. The rate limiting exists to spare the site, so do not work around it.
+
+### License
+
+- Lecture content and `experiments/`: CC BY-NC-SA 4.0 (MIT OpenCourseWare RES.18-010).
+- Tool code (`src/lnb/`, `tools/`) and skills (`skills/`): MIT. Frame detection in `lnb frames` was adapted from [claude-video](https://github.com/bradautomates/claude-video) (MIT).
