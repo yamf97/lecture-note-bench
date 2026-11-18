@@ -296,6 +296,13 @@ A symmetric matrix equals its transpose. Its inverse is also symmetric when it e
         n, fails = self.run_note('"대칭 행렬은 전치해도 그대로인 행렬이다" `Test Book p.5`')
         self.assertEqual((n["교재"], fails), (1, []))
 
+    def test_config_without_books_clears_books(self):
+        cfg = os.path.join(self.tmp, "check_note.json")
+        with open(cfg, "w") as f:
+            json.dump({"lectures": {}}, f)
+        check_note.load_config(cfg)
+        self.assertEqual(check_note.CONFIG["books"], {})
+
     def test_not_checkable_is_not_a_pass(self):
         n, fails = self.run_note('"외적 $xy^\\\\top$ 은 행렬이다" `Test Book p.5`\n'      # 번역
                                  '"$A^\\\\top$ equals" `Test Book p.6`\n'                 # 단어 너무 적음

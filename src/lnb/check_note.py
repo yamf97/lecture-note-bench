@@ -375,8 +375,7 @@ def load_config(path):
             LECTURES[key] = (where(v["dir"]), v.get("index", "index.tsv")) if isinstance(v, dict) else where(v)
     if c.get("all"):
         CONFIG["all"] = where(c["all"])
-    if c.get("books"):
-        CONFIG["books"] = {name: where(v) for name, v in c["books"].items()}
+    CONFIG["books"] = {name: where(v) for name, v in (c.get("books") or {}).items()}   # 설정마다 새로
     if c.get("labels"):
         lab = dict(c["labels"])
         lab["root"] = where(lab.get("root", "."))
