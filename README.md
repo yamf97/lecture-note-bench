@@ -71,6 +71,7 @@ lnb doctor      # 바깥 프로그램·whisper 모델 점검. 빠진 것은 설�
 ```
 
 - 패키지 이름은 `lecture-note-bench`, 명령은 `lnb`입니다. Python 3.9 이상
+- 버전별 바뀐 점은 [CHANGELOG.md](CHANGELOG.md). 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`, 최신으로: `pipx upgrade lecture-note-bench`
 - **macOS에서 만들고 시험했습니다.** 리눅스·윈도우는 아직 시험하지 않았습니다 (파이썬과 바깥 프로그램은 거기에도 있지만, 설치 안내와 한글 출력 등은 확인 전입니다)
 - yt-dlp·youtube-transcript-api는 같이 깔립니다. ffmpeg·whisper-cli·pdftotext 같은 바깥 프로그램은 `lnb doctor`가 없는 것과 설치법을 알려 줍니다 (macOS: `brew install ffmpeg whisper-cpp poppler`)
 - **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 ggml 모델 파일 하나를 받아 둡니다:
@@ -236,6 +237,7 @@ lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and 
 ```
 
 - Requires Python 3.9+. **Built and tested on macOS only**; Linux and Windows are untested.
+- Changes by version are in [CHANGELOG.md](CHANGELOG.md). To pin a version, use `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`; to update, use `pipx upgrade lecture-note-bench`.
 - You need a whisper model only for `transcribe`. Put a ggml model file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
 - You can run the tools without installing: `python3 tools/<file>.py`. The files are `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py` and `check_note.py` (`check`); `doctor` needs the installed `lnb`.
 
