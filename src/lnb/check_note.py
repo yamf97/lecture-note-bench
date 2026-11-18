@@ -38,6 +38,7 @@ check_note.json). 경로의 ~ 와 상대 경로(설정 파일 기준)를 읽는�
       "lectures": {"Vision": "lectures/Strang_2020_vision_LA",
                    "SC1": {"dir": "…/Strang_2011_18.06SC", "index": "index_unit1.tsv"}},
       "all": "books",
+      "books": {"Strang ILA": "~/자료/strang-ila.md"},  # 7. 교재 인용 — 책 이름 → lnb pages 로 만든 원문 md
       "labels": {                                  # 5. 라벨 인용 — 원문 "…" · 강의록 3쪽 "…"
         "root": "~/자료",
         "path": "(?P<course>[^/]+)/notes/L(?P<lecture>\\d+)",   # 노트 경로에서 과목·강 읽기
@@ -60,6 +61,12 @@ check_note.json). 경로의 ~ 와 상대 경로(설정 파일 기준)를 읽는�
        - files 는 차례로 찾아 처음 맞는 파일을 쓴다. --lectures 1 2 6 이면 셋 중 어디에 있어도 된다
   6. 설명 빠짐 (labels.explain) — 본문에서 쓰는 용어·기호가 본문 표시 앞이나 용어 사전에 있는가.
        "여기 설명이 없다"를 기계적으로 짚을 뿐, 설명이 쉬운지는 판단하지 못한다
+  7. 교재 인용 (books 가 있을 때)  "…" `Strang ILA §2.4 p.68`  (pp.76–77 · p.81 #7 · p.60 Eq 5 도 읽는다)
+       - 수식($…$)을 빼고 남은 단어가 원문 md 의 그 쪽에 순서대로 있는가. 수식을 뺀 자리는 몇 단어 틈을 허용,
+         「…」로 줄였으면 조각마다 순서대로. 인용은 적힌 쪽에서 시작하고 다음 쪽으로 넘어가도 된다
+       - 다른 쪽에 있으면 그 쪽을 알려 준다
+       - 「교재 대조 불가」(통과로 세지 않음): 쪽이 없음 · 남은 단어가 4개 미만 · 원문 md 에 그 쪽이 없음 ·
+         한글 원문이 아닌데 따옴표 안이 한글(번역) — 수식이 맞는지는 검산식이 따로 본다
 
 실패가 하나라도 있으면 종료 코드 1.
 """
@@ -83,7 +90,7 @@ LECTURES_DIR = os.environ.get(
 LECTURES = {
     "Vision": os.path.join(LECTURES_DIR, "Strang_2020_vision_LA"),
 }
-CONFIG = {"dir": os.getcwd(), "all": None, "labels": None}
+CONFIG = {"dir": os.getcwd(), "all": None, "labels": None, "books": {}}
 CONFIG_NAME = "check_note.json"
 
 COORD = r"\[(?P<key>[A-Za-z0-9.]+) (?P<no>\d{2}) (?P<t>\d{2,3}:\d{2})\]"
@@ -333,6 +340,8 @@ def check_file(path):
         err = check_expr(norm(m["expr"]))
         if err:
             fails.append((line_of(text, m.start()), f"검산 {err}"))
+    if CONFIG["books"]:
+        check_books(text, n, fails)
     if CONFIG["labels"]:
         check_labels(path, text, n, fails)
     return n, fails
@@ -366,10 +375,114 @@ def load_config(path):
             LECTURES[key] = (where(v["dir"]), v.get("index", "index.tsv")) if isinstance(v, dict) else where(v)
     if c.get("all"):
         CONFIG["all"] = where(c["all"])
+    if c.get("books"):
+        CONFIG["books"] = {name: where(v) for name, v in c["books"].items()}
     if c.get("labels"):
         lab = dict(c["labels"])
         lab["root"] = where(lab.get("root", "."))
         CONFIG["labels"] = lab
+
+
+# ── 7. 교재 인용 ─────────────────────────────────────
+# 노트: "…" `Strang ILA §2.4 p.68` — 책 이름은 설정 "books" 의 키, 값은 lnb pages 로 만든 쪽 표시 원문 md.
+# 대조: 수식($…$)을 빼고 남은 단어가 그 쪽에 순서대로 있는가. 수식을 뺀 자리는 몇 단어 틈을 허용한다
+# (노트 `$x$ and $y$` ↔ 변환본 `x and y`). 「…」로 줄인 곳은 조각마다 순서대로.
+
+PAGE_MARK = re.compile(r"<!--\s*p\.(\d+)\s*\(PDF\s*\d+\)\s*-->")
+BOOK_PAGE = re.compile(r"\bpp?\.\s*(\d+)(?:\s*[–-]\s*(\d+))?")
+MATH = re.compile(r"\$\$.*?\$\$|\$[^$\n]*\$", re.S)
+HANGUL = re.compile(r"[가-힣]")
+MATH_GAP = 8      # 수식을 뺀 자리에 허용하는 단어 수
+MIN_WORDS = 4     # 이보다 적게 남으면 「대조 불가」
+_book_cache = {}
+
+
+def words(s):
+    return [w.lower() for w in re.findall(r"\w+", s)]
+
+
+def book_pages(path):
+    """{책 쪽: 단어 목록}."""
+    if path not in _book_cache:
+        text = open(path, encoding="utf-8").read()
+        text = re.sub(r"(\w)-[ \t]*\n[ \t]*(\w)", r"\1\2", text)   # 줄 끝 하이픈
+        pages, cur = {}, None
+        for chunk in re.split(r"(<!--[^>]*-->)", text):
+            m = PAGE_MARK.fullmatch(chunk.strip()) if chunk.startswith("<!--") else None
+            if m:
+                cur = int(m.group(1))
+                pages.setdefault(cur, [])
+            elif chunk.startswith("<!--"):
+                cur = None if re.search(r"PDF\s*\d+", chunk) else cur
+            elif cur is not None:
+                pages[cur] += words(MATH.sub(" ", chunk))
+        _book_cache[path] = pages
+    return _book_cache[path]
+
+
+def quote_runs(q):
+    """[(단어 목록, 앞과의 최대 틈)] — 「…」 뒤는 틈 제한 없음, 수식 뒤는 MATH_GAP."""
+    runs = []
+    for i, piece in enumerate(re.split(r"\s*(?:…|\.{3})\s*", q)):
+        for j, part in enumerate(MATH.split(piece)):
+            w = words(part.replace("**", " ").replace("*", " "))
+            if w:
+                gap = None if (i > 0 and j == 0) or not runs else MATH_GAP
+                runs.append((w, gap))
+    return runs
+
+
+def find_runs(runs, toks, first_end=None):
+    """runs 가 toks 안에 순서대로(틈 제한 지켜) 있나. 첫 조각은 first_end 앞에서 시작해야 한다."""
+    def at(seq, start, end):
+        n = len(seq)
+        for k in range(start, min(end, len(toks) - n + 1)):
+            if toks[k:k + n] == seq:
+                yield k
+
+    def go(i, start, end):
+        if i == len(runs):
+            return True
+        for k in at(runs[i][0], start, end):
+            nxt_gap = runs[i + 1][1] if i + 1 < len(runs) else None
+            nxt_end = len(toks) if nxt_gap is None else k + len(runs[i][0]) + nxt_gap + 1
+            if go(i + 1, k + len(runs[i][0]), nxt_end):
+                return True
+        return False
+
+    return go(0, 0, len(toks) if first_end is None else first_end) if runs else False
+
+
+def check_books(text, n, fails):
+    names = sorted(CONFIG["books"], key=len, reverse=True)
+    pat = re.compile(r"\"(?P<q>[^\"\n]+)\"[ \t]*`(?P<book>" + "|".join(map(re.escape, names)) + r")(?P<rest>[^`]*)`")
+    n.setdefault("교재", 0)
+    n.setdefault("교재 대조 불가", 0)
+    for m in pat.finditer(text):
+        q, book, rest = m["q"], m["book"], m["rest"]
+        pm = BOOK_PAGE.search(rest)
+        runs = quote_runs(q)
+        try:
+            pages = book_pages(CONFIG["books"][book])
+        except OSError as e:
+            fails.append((line_of(text, m.start()), f"교재 원문 파일을 못 읽음: {e}"))
+            continue
+        lo = int(pm.group(1)) if pm else None
+        hi = int(pm.group(2)) if pm and pm.group(2) else lo
+        hangul_src = lo is not None and any(HANGUL.search(w) for p in range(lo, max(hi, lo) + 2)
+                                            for w in pages.get(p, []))
+        if (not pm or sum(len(w) for w, _ in runs) < MIN_WORDS or lo not in pages
+                or (HANGUL.search(q) and not hangul_src)):
+            n["교재 대조 불가"] += 1     # 쪽 없음 · 단어 너무 적음 · 변환 안 한 쪽 · 원문 아닌 번역
+            continue
+        n["교재"] += 1
+        cited = sum((pages.get(p, []) for p in range(lo, max(hi, lo) + 1)), [])
+        # 인용은 적힌 쪽에서 시작해야 하고, 다음 쪽으로 넘어가도 된다
+        if find_runs(runs, cited + pages.get(max(hi, lo) + 1, []), first_end=len(cited)):
+            continue
+        other = [p for p in sorted(pages) if find_runs(runs, pages[p] + pages.get(p + 1, []), first_end=len(pages[p]))]
+        where_ = f" — p.{other[0]}에 있다" if other else ""
+        fails.append((line_of(text, m.start()), f"교재 {book} p.{lo}{'–' + str(hi) if hi != lo else ''}에 그대로 없다{where_}: \"{q[:50]}…\""))
 
 
 # ── 5. 라벨 인용 ──────────────────────────────────────

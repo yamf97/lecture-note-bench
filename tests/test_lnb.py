@@ -219,6 +219,119 @@ class Frames(unittest.TestCase):
             shutil.rmtree(tmp)
 
 
+class Books(unittest.TestCase):
+    """교재 인용 — lnb pages 로 만든 쪽 표시 원문 md 와 대조 (지어낸 문장만 쓴다)."""
+
+    SOURCE = """<!-- lnb pages: test · 책 쪽 = PDF 쪽 − 10 -->
+
+<!-- p.5 (PDF 15) -->
+
+The dot product of x and y is the sum of numbers $x_iy_i$ . We write it as a row times a col-
+umn without any dot.
+
+<!-- p.6 (PDF 16) -->
+
+A symmetric matrix equals its transpose. Its inverse is also symmetric when it exists.
+"""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.src = os.path.join(self.tmp, "book.md")
+        with open(self.src, "w", encoding="utf-8") as f:
+            f.write(self.SOURCE)
+        check_note._book_cache.clear()
+        self.old = dict(check_note.CONFIG)
+        check_note.CONFIG["books"] = {"Test Book": self.src}
+
+    def tearDown(self):
+        check_note.CONFIG.clear()
+        check_note.CONFIG.update(self.old)
+        shutil.rmtree(self.tmp)
+
+    def run_note(self, body):
+        n, fails = {}, []
+        check_note.check_books(body, n, fails)
+        return n, fails
+
+    def test_quote_with_math_and_hyphen_passes(self):
+        n, fails = self.run_note('"The dot product of $x$ and $y$ is the sum of numbers $x_iy_i$. '
+                                 'We write it as a row times a column" `Test Book §1.1 p.5`')
+        self.assertEqual((n["교재"], fails), (1, []))
+
+    def test_changed_word_fails(self):
+        _, fails = self.run_note('"The dot product of $x$ and $y$ is the product of numbers" `Test Book p.5`')
+        self.assertEqual(len(fails), 1)
+        self.assertIn("그대로 없다", fails[0][1])
+
+    def test_wrong_page_points_to_right_one(self):
+        _, fails = self.run_note('"A symmetric matrix equals its transpose." `Test Book p.5`')
+        self.assertIn("p.6에 있다", fails[0][1])
+
+    def test_quote_running_onto_next_page_and_ranges(self):
+        n, fails = self.run_note('"without any dot. A symmetric matrix equals" `Test Book p.5`\n'
+                                 '"Its inverse is also symmetric" `Test Book pp.5–6`')
+        self.assertEqual((n["교재"], fails), (2, []))
+
+    def test_ellipsis_parts_in_order(self):
+        _, fails = self.run_note('"The dot product of … row times a column" `Test Book p.5`')
+        self.assertEqual(fails, [])
+        _, fails = self.run_note('"row times a column … The dot product of" `Test Book p.5`')
+        self.assertEqual(len(fails), 1)
+
+    def test_repeated_middle_piece_backtracks(self):
+        # 「numbers」가 두 번 나온다: 첫 번째 뒤 8단어 안에는 「without any dot」이 없고, 두 번째 뒤에는 있다
+        with open(self.src, "w", encoding="utf-8") as f:
+            f.write("<!-- p.5 (PDF 15) -->\nStart here. Then numbers one two three four five six seven eight nine ten "
+                    "eleven. Later numbers $n$ without any dot at all.\n")
+        check_note._book_cache.clear()
+        _, fails = self.run_note('"Start here. … numbers $x$ without any dot" `Test Book p.5`')
+        self.assertEqual(fails, [])
+        _, fails = self.run_note('"Start here. … numbers $x$ with a dot" `Test Book p.5`')
+        self.assertEqual(len(fails), 1)
+
+    def test_korean_source_after_long_english(self):
+        with open(self.src, "w", encoding="utf-8") as f:
+            f.write("<!-- p.5 (PDF 15) -->\n" + "word " * 300 + "\n대칭 행렬은 전치해도 그대로인 행렬이다.\n")
+        check_note._book_cache.clear()
+        n, fails = self.run_note('"대칭 행렬은 전치해도 그대로인 행렬이다" `Test Book p.5`')
+        self.assertEqual((n["교재"], fails), (1, []))
+
+    def test_not_checkable_is_not_a_pass(self):
+        n, fails = self.run_note('"외적 $xy^\\\\top$ 은 행렬이다" `Test Book p.5`\n'      # 번역
+                                 '"$A^\\\\top$ equals" `Test Book p.6`\n'                 # 단어 너무 적음
+                                 '"Some sentence on a page we did not convert" `Test Book p.99`\n'
+                                 '"A symmetric matrix equals its transpose." `Test Book §2.4`')   # 쪽 없음
+        self.assertEqual((n["교재"], n["교재 대조 불가"], fails), (0, 4, []))
+
+
+class Pages(unittest.TestCase):
+    def test_content_list_to_page_marked_md(self):
+        from lnb import pages
+        tmp = tempfile.mkdtemp()
+        try:
+            src = os.path.join(tmp, "x_content_list.json")
+            with open(src, "w") as f:
+                json.dump([{"type": "page_number", "text": "5", "page_idx": "0"},
+                           {"type": "header", "text": "Chapter 1", "page_idx": "0"},
+                           {"type": "text", "text": "First page words.", "page_idx": "0"},
+                           {"type": "equation", "text": "$$\na = b\n$$", "page_idx": "1"},
+                           {"type": "text", "text": "Second page words.", "page_idx": "1"}], f)
+            out = os.path.join(tmp, "book.md")
+            code, msg = quiet(pages.main, [src, "--pdf-start", "15", "--offset", "10", "-o", out])
+            self.assertIn(code, (0, None))
+            md = open(out, encoding="utf-8").read()
+            self.assertIn("<!-- p.5 (PDF 15) -->\n\nFirst page words.", md)
+            self.assertIn("<!-- p.6 (PDF 16) -->", md)
+            self.assertNotIn("Chapter 1", md)          # 머리글은 뺀다
+            self.assertNotIn("경고", msg)               # 인쇄된 5 = 15 − 10
+            code, msg = quiet(pages.main, [src, "--pdf-start", "15", "--offset", "9", "-o", out, "--force"])
+            self.assertIn("--offset 확인", msg)
+            code, _ = quiet(pages.main, [src, "-o", out])  # 덮어쓰기는 --force 로만
+            self.assertNotIn(code, (0, None))
+        finally:
+            shutil.rmtree(tmp)
+
+
 class Cli(unittest.TestCase):
     def test_help_lists_all_commands(self):
         code, out = quiet(cli.main, ["--help"])

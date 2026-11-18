@@ -18,7 +18,10 @@ COMMANDS = [
     ("frames", "frames", "판서·슬라이드 장면을 뽑을 때",
      "영상 → 장면 .jpg + index.tsv",
      "lnb frames 강의.mp4 --at 05:32,12:00"),
-    ("check", "check_note", "다 쓴 노트를 검사할 때 — 인용이 자막에 그대로 있나·시각·검산식",
+    ("pages", "pages", "교재·강의록 인용을 검사하려고 원문 파일을 만들 때",
+     "MinerU 결과(json)·글자 층 PDF → 쪽 표시가 든 원문 md (<!-- p.68 (PDF 78) -->)",
+     "lnb pages 교재_content_list.json --pdf-start 78 --offset 10 -o 원문.md"),
+    ("check", "check_note", "다 쓴 노트를 검사할 때 — 인용이 자막·교재에 그대로 있나·시각·검산식",
      "노트 .md → 문제 목록 (있으면 종료 코드 1)",
      "lnb check 노트.md"),
     ("doctor", "doctor", "처음 설치했을 때·명령이 안 될 때",
@@ -29,7 +32,8 @@ COMMANDS = [
 FLOW = """흐름:
   영상 주소 ─ fetch ─┬─ 자막 있음 ─────────────┬─ text(읽기본) ─ 노트 쓰기 ─ check
                      └─ 없음 → transcribe ─────┘
-  영상 ─ frames(판서·슬라이드 장면) ─────────────┘"""
+  영상 ─ frames(판서·슬라이드 장면) ─────────────┤
+  교재 PDF ─ (MinerU 등) ─ pages(쪽 표시 원문) ──┘"""
 
 
 def usage():
