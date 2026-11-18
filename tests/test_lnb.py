@@ -143,6 +143,59 @@ class Fetch(unittest.TestCase):
         fake_bin(self.bin, "youtube_transcript_api", "echo 'RequestBlocked' >&2; exit 0")
         self.assertEqual(fetch.get_transcript_api("abc", ["en"], "t", "s", out), "blocked")
 
+    def fake_ytdlp(self, video_blocked=False, meta_blocked=False):
+        """인자를 보고 흉내 내는 가짜 yt-dlp. 부른 인자는 calls.log 에 한 줄씩 남긴다."""
+        log = os.path.join(self.tmp, "calls.log")
+        path = os.path.join(self.bin, "yt-dlp")
+        with open(path, "w") as f:
+            f.write(f"""#!{sys.executable}
+import sys
+a = sys.argv[1:]
+open({log!r}, "a").write(" ".join(a) + "\\n")
+if "--flat-playlist" in a:
+    print("1\\tid1\\t60\\tRobotics 1"); print("2\\tid2\\t60\\tRobotics 2"); sys.exit(0)
+if "--write-subs" in a:
+    o = a[a.index("-o") + 1]
+    open(o.replace("%(ext)s", "en.vtt"), "w").write("WEBVTT\\n\\n00:00:01.000 --> 00:00:02.000\\nhi\\n"); sys.exit(0)
+if "--print" in a:
+    if {meta_blocked!r}:
+        sys.stderr.write("ERROR: Sign in to confirm you're not a bot\\n"); sys.exit(1)
+    print("id1\\tRobotics 1"); sys.exit(0)
+if "-f" in a:
+    if {video_blocked!r}:
+        sys.stderr.write("ERROR: HTTP Error 429: Too Many Requests\\n"); sys.exit(1)
+    o = a[a.index("-o") + 1]
+    open(o.replace("%(ext)s", "mp4"), "w").write("x"); sys.exit(0)
+sys.exit(1)
+""")
+        os.chmod(path, 0o755)
+        return log
+
+    def test_title_with_bot_is_not_a_block(self):
+        self.fake_ytdlp()
+        folder = self.course()
+        code, _ = quiet(fetch.main, [folder, "--max", "0"])
+        self.assertEqual(code, 0)
+        self.assertTrue(os.path.exists(os.path.join(folder, "index.tsv")))
+
+    def test_course_video_block_stops_before_next_lecture(self):
+        log = self.fake_ytdlp(video_blocked=True)
+        folder = self.course()
+        code, _ = quiet(fetch.main, [folder, "--video", "--max", "2"])
+        self.assertEqual(code, 2)
+        self.assertNotIn("id2", open(log).read())   # 둘째 강의는 요청하지 않았다
+
+    def test_single_metadata_block_is_2(self):
+        self.fake_ytdlp(meta_blocked=True)
+        code, _ = quiet(fetch.main, ["--url", "https://example.invalid/v", "-o", self.tmp])
+        self.assertEqual(code, 2)
+
+    def test_single_video_block_is_2(self):
+        self.fake_ytdlp(video_blocked=True)
+        fake_bin(self.bin, "youtube_transcript_api", "echo 'Could not retrieve a transcript' >&2; exit 0")
+        code, _ = quiet(fetch.main, ["--url", "https://example.invalid/v", "-o", self.tmp, "--video"])
+        self.assertEqual(code, 2)
+
     def test_tool_prefers_path_binary(self):
         fake_bin(self.bin, "yt-dlp", "exit 0")
         self.assertEqual(fetch.tool("yt-dlp", "yt_dlp"), ["yt-dlp"])

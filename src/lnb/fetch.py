@@ -144,7 +144,7 @@ def get_ytdlp_subs(vid, langs, out_tmpl, index_line=None, index_file=None):
         cmd += ["--print-to-file", index_line, index_file, "--no-simulate"]
     r = run(cmd + ["--", vid])
     log = r.stdout + r.stderr
-    if BLOCK_YTDLP.search(log):
+    if BLOCK_YTDLP.search(r.stderr):   # stdout 에는 제목이 있다 — "bot"(Robotics) 오판 방지
         return "blocked", log
     stem = out_tmpl.replace(".%(ext)s", "")
     return ("ok" if glob.glob(glob.escape(stem) + ".*.vtt") else "none"), log
@@ -157,7 +157,7 @@ def get_media(vid, out_base, kind):
     else:
         cmd = [*tool("yt-dlp", "yt_dlp"), "-f", "ba", "-x", "--audio-format", "m4a", "-o", out_base + ".%(ext)s", "--", vid]
     r = run(cmd)
-    if BLOCK_YTDLP.search(r.stdout + r.stderr) and r.returncode:
+    if BLOCK_YTDLP.search(r.stderr) and r.returncode:
         return "blocked"
     return "ok" if glob.glob(glob.escape(out_base) + ".*") else "fail"
 
@@ -215,7 +215,7 @@ def course(folder, a):
         print(">> 재생목록 목록 수집 중...")
         r = run([*tool("yt-dlp", "yt_dlp"), "--flat-playlist", "--print",
                  "%(playlist_index)s\t%(id)s\t%(duration)s\t%(title)s", cfg["playlist"]])
-        if BLOCK_YTDLP.search(r.stdout + r.stderr):
+        if BLOCK_YTDLP.search(r.stderr):
             print("!! 재생목록 수집에서 차단 응답 — 즉시 중단. 시간이 지난 뒤 다시 실행\n"
                   + "\n".join(r.stderr.splitlines()[-3:]))
             return 2
@@ -262,6 +262,10 @@ def course(folder, a):
             make_plain(src, os.path.join(plain_dir, base + ".txt"), plain)
         got_video = get_media(vid, os.path.join(folder, "video", base), "video") if a.video else None
         print(f"   [ ok  ] {num} {title}" + (f" · 영상 {got_video}" if got_video else ""))
+        if got_video == "blocked":
+            print(f"!! {num} 영상에서 차단 응답 — 즉시 중단. 시간이 지난 뒤 다시 실행")
+            stopped = True
+            break
 
     with open(os.path.join(folder, "failed.tsv"), "w", encoding="utf-8") as f:
         for idx, vid, _, title in rows:
@@ -283,6 +287,9 @@ def single(a):
     raw_dir = os.path.join(folder, "raw")
     os.makedirs(raw_dir, exist_ok=True)
     r = run([*tool("yt-dlp", "yt_dlp"), "--print", "%(id)s\t%(title)s", "--skip-download", "--", a.url])
+    if BLOCK_YTDLP.search(r.stderr):
+        print("!! 영상 정보에서 차단 응답 — 즉시 중단\n" + r.stderr[-500:], file=sys.stderr)
+        return 2
     if r.returncode or "\t" not in r.stdout:
         print("영상 정보를 못 읽었다\n" + r.stderr[-500:], file=sys.stderr)
         return 1
@@ -295,11 +302,19 @@ def single(a):
     if res != "ok" and a.transcribe_missing:
         audio = os.path.join(folder, "audio", vid)
         os.makedirs(os.path.dirname(audio), exist_ok=True)
-        if get_media(vid, audio, "audio") == "ok":
+        got_audio = get_media(vid, audio, "audio")
+        if got_audio == "blocked":
+            print("!! 음성 받기에서 차단 응답 — 중단", file=sys.stderr)
+            return 2
+        if got_audio == "ok":
             res = "ok" if transcribe(glob.glob(glob.escape(audio) + ".*")[0], raw_dir, a.lang) else res
     print(f"자막: {'ok' if res == 'ok' else '없음'} — {title}")
     if a.video:
-        print(f"영상: {get_media(vid, os.path.join(folder, 'video', vid), 'video')}")
+        got_video = get_media(vid, os.path.join(folder, "video", vid), "video")
+        print(f"영상: {got_video}")
+        if got_video == "blocked":
+            print("!! 영상 받기에서 차단 응답 — 중단", file=sys.stderr)
+            return 2
     return 0 if res == "ok" else 1
 
 
