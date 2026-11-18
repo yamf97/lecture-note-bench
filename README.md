@@ -39,6 +39,17 @@ markitdown 슬라이드.pptx -o 자료폴더/md/슬라이드.md
 - 교재 변환본은 저작물입니다. 자료 폴더(git 밖)에 두고 공개 저장소에 넣지 않습니다
 - `lnb check`는 교재 인용을 대조하지 못합니다 — 스캔 교재는 텍스트가 깨지기 쉽습니다. 강의록처럼 글자가 살아 있는 PDF는 `check_note.json`의 `labels.sources`(`"type": "pdf"`)로 대조할 수 있습니다
 
+### 노트 쓰기 — 재료를 모아 한 편으로
+
+위 재료(자막 읽기본·판서 장면·교재 md)를 옆에 두고 노트를 씁니다. 사람이 써도, AI에게 맡겨도 규칙은 같습니다. 자세한 규칙은 [METHOD.md](METHOD.md).
+
+1. **읽기** — `lnb text`의 30초 읽기본으로 흐름을 잡고, 인용할 곳은 `--cues`로 정확한 시각을 찾습니다. 판서는 장면 사진으로, 교재는 md 변환본으로 읽습니다
+2. **옮기기** — 인용은 글자 그대로, 바로 뒤에 좌표: 영상 `[Vision 00 01:47]`(그 말이 시작되는 큐) · 교재 `§3.2 p.24`(원본 쪽) · 판서 장면 `mm:ss`. 판서·교재 수식은 LaTeX로 옮기고, 읽기 애매한 글자는 추측하지 않고 `[원문 미확인]`과 노트 끝 「판독 불확실 모음」 표에 모읍니다
+3. **설명 붙이기** — 원문 밖 설명은 `[외부 추론]`, 근거를 못 찾은 곳은 `[정보 없음]`. 쉬운 설명과 별도로 정확한 정의·성립 조건을 좌표와 함께 적습니다(METHOD §3)
+4. **계산 심기** — 계산한 곳마다 `<!-- 검산: M([[1,2],[3,4]]).T == M([[1,3],[2,4]]) -->`처럼 식을 심어 둡니다
+5. **검사** — `lnb check 노트.md`: **영상 인용**이 자막에 글자 그대로 있는지, 시각이 맞는지, 검산식이 성립하는지. 통과할 때까지 고칩니다. 교재·판서 인용은 대조하지 못합니다(글자 있는 강의록 PDF는 `labels`로 설정하면 대조)
+6. **사람·다른 모델이 볼 것** — 판서·교재 수식 옮김, 판독 불확실 모음, 번역, 개념의 옳고 그름은 검사기가 못 봅니다. 노트를 쓴 모델이 아닌 다른 모델에게 검토를 맡기고 지적을 원문으로 확인합니다(METHOD §4)
+
 ## 설치
 
 ```bash
@@ -48,6 +59,7 @@ lnb doctor      # 바깥 프로그램·whisper 모델 점검. 빠진 것은 설�
 ```
 
 - 패키지 이름은 `lecture-note-bench`, 명령은 `lnb`입니다. Python 3.9 이상
+- **macOS에서 만들고 시험했습니다.** 리눅스·윈도우는 아직 시험하지 않았습니다 (파이썬과 바깥 프로그램은 거기에도 있지만, 설치 안내와 한글 출력 등은 확인 전입니다)
 - yt-dlp·youtube-transcript-api는 같이 깔립니다. ffmpeg·whisper-cli·pdftotext 같은 바깥 프로그램은 `lnb doctor`가 없는 것과 설치법을 알려 줍니다 (macOS: `brew install ffmpeg whisper-cpp poppler`)
 - **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 ggml 모델 파일 하나를 받아 둡니다:
 
@@ -170,4 +182,4 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 ---
 
-**In English.** Tools for turning lecture videos into study notes that keep to their sources, plus a small experiment. The code was written with Claude Code; the design, verification rules, experiment and blind judging are mine, and changes go through review by a model from another company (Codex) and regression tests. AI-written commits are marked `[AI:<model>]`. Install the command-line tool with `pipx install git+https://github.com/yamf97/lecture-note-bench`, then run `lnb --help` and `lnb doctor` (it checks ffmpeg, whisper-cli, pdftotext and the whisper model, and prints install commands). The subcommands fetch captions (and, if needed, video or audio), transcribe locally with whisper.cpp when there are no captions, turn captions into 30-second reading text, pick board and slide frames just before each large change, and check finished notes (a Claude Code skill in `skills/lecture-note/` chains them): every quote must appear verbatim in the captions at the stated time, and inline calculations must hold. In the experiment, five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00 and I read the results blind; the smallest model (a 27B dense model) did best, from a single run, so it is an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `lnb fetch` downloads from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.
+**In English.** Tools for turning lecture videos into study notes that keep to their sources, plus a small experiment. The code was written with Claude Code; the design, verification rules, experiment and blind judging are mine, and changes go through review by a model from another company (Codex) and regression tests. AI-written commits are marked `[AI:<model>]`. Built and tested on macOS only; Linux and Windows are untested. Install the command-line tool with `pipx install git+https://github.com/yamf97/lecture-note-bench`, then run `lnb --help` and `lnb doctor` (it checks ffmpeg, whisper-cli, pdftotext and the whisper model, and prints install commands). The subcommands fetch captions (and, if needed, video or audio), transcribe locally with whisper.cpp when there are no captions, turn captions into 30-second reading text, pick board and slide frames just before each large change, and check finished notes (a Claude Code skill in `skills/lecture-note/` chains them): every quote must appear verbatim in the captions at the stated time, and inline calculations must hold. In the experiment, five open-weight models got the same instruction sheet for a note on MIT OCW RES.18-010 video 00 and I read the results blind; the smallest model (a 27B dense model) did best, from a single run, so it is an observation, not a conclusion. Lecture content is CC BY-NC-SA 4.0 (MIT OCW), and the tools are MIT-licensed. `lnb fetch` downloads from video sites such as YouTube: use it only for material you have the right or permission to download (e.g. CC-licensed OCW lectures), follow the site's terms and each video's license, and do not redistribute what you download.
