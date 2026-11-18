@@ -14,7 +14,7 @@ allowed-tools: Bash Read Write Edit
 - 각 명령의 옵션·설정 형식은 `lnb <명령> --help`
 
 **`lnb`를 설치하지 않았으면** 저장소의 `tools/`로 같은 일을 한다 — 아래 `lnb <명령>`을 `python3 $T/<파일>`로 바꿔 부른다
-(`fetch`→`fetch.py` · `transcribe`→`transcribe.py` · `text`→`vtt_text.py` · `frames`→`frames.py` · `check`→`check_note.py`):
+(`fetch`→`fetch.py` · `transcribe`→`transcribe.py` · `text`→`vtt_text.py` · `frames`→`frames.py` · `pages`→`pages.py` · `check`→`check_note.py`):
 
 ```bash
 T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../../tools" && pwd)"
@@ -33,7 +33,7 @@ T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../.
 - **노트를 어디에, 어떤 규칙으로** — 사용자의 저장소에 노트 규칙 문서가 있으면 먼저 읽는다. 없으면 `METHOD.md`
 - **자료 폴더** — 자막·영상·장면은 노트와 분리해 git 밖에 둔다. 공개 저장소에 넣지 않는다
 - **판서·슬라이드가 중요한 강의인가** — 그렇다면 영상도 받는다(③). 말 위주면 자막만
-- **교재·슬라이드·강의록이 있나** — 있으면 어느 장·절·쪽까지 쓸지 (③-2, 변환이 쪽당 수 분)
+- **교재·슬라이드·강의록이 있나** — 있으면 어느 장·절·쪽까지 쓸지 (③-2, MinerU pipeline 이 쪽당 2분 안팎 [M1·8GB 실측 2쪽 5분])
 - 재생목록이면 이번에 몇 편까지 (기본 10, 천천히 받는다)
 
 ## ① 받기 — `lnb fetch`
@@ -71,9 +71,10 @@ lnb frames <영상> --at 05:32,12:00  # 자막 읽다 "여기 판서" 싶은 곳
 lnb 밖의 공개 도구를 쓴다 (사용자 환경에 변환 래퍼가 있으면 그것을 — 내 환경판 스킬 참고):
 
 ```bash
-mineru -p <교재.pdf> -o <자료 폴더>/md -s <시작쪽> -e <끝쪽>   # PDF·사진 → md, 수식 LaTeX. 쪽은 0부터. 필요한 쪽만
+mineru -p <교재.pdf> -o <자료 폴더>/md -s <시작쪽> -e <끝쪽> -b pipeline   # PDF·사진 → md, 수식 LaTeX. 쪽은 0부터. 필요한 쪽만
 markitdown <슬라이드.pptx> -o <자료 폴더>/md/<이름>.md        # 오피스 → md. 수식은 깨진다
 ```
+- 급할 때 몇 쪽만: 쪽 그림(`pdftoppm -f N -l M -png`)을 큰 모델에게 주고 옮기게 한다 — 「한 글자도 고치지 말 것, 애매하면 `[?]`, 식 번호는 수식 밖에, 쪽마다 `<!-- p.N (PDF M) -->`」
 - 변환본을 열어 확인한다 — 한글·표·빈 수식(`$$ $$`). 성공 메시지만 믿지 않는다
 - 노트에 옮긴 수식은 원본 쪽 그림과 대조한다. 읽기 애매하면 판서와 같이 `[원문 미확인]` + 「판독 불확실 모음」
 - 교재 인용 좌표는 **원본의 절·쪽**(`§3.2 p.24`)

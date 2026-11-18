@@ -27,13 +27,14 @@
 이 저장소에 변환 도구는 없고, 공개된 변환 도구를 그대로 씁니다:
 
 ```bash
-# PDF·사진 → md (수식은 LaTeX). 쪽마다 수 분 걸리므로 필요한 쪽만 — -s/-e 는 0부터 세는 PDF 쪽
-mineru -p 교재.pdf -o 자료폴더/md -s 40 -e 52
+# PDF·사진 → md (수식은 LaTeX). -b pipeline 이 기본(hybrid)보다 6배쯤 빠르다 — M1·8GB에서 2쪽 약 5분(hybrid 30분). 필요한 쪽만, -s/-e 는 0부터 세는 PDF 쪽
+mineru -p 교재.pdf -o 자료폴더/md -s 40 -e 52 -b pipeline
 # 오피스 문서(pptx·docx·xlsx) → md. 빠르지만 수식은 깨진다 (수식이 있으면 PDF로 바꿔 MinerU)
 markitdown 슬라이드.pptx -o 자료폴더/md/슬라이드.md
 ```
 
 - [MinerU](https://github.com/opendatalab/MinerU), [MarkItDown](https://github.com/microsoft/markitdown)(MIT). 설치는 각 저장소 안내를 따릅니다. MinerU는 버전마다 라이선스가 다릅니다 — 3.4.5는 「MinerU Open Source License」(Apache 2.0 + 상업 이용 문턱 등 추가 조항)이고, 이전 버전은 다를 수 있으니 설치한 버전의 LICENSE를 확인하세요. 모델 가중치에는 따로 조건이 붙을 수 있습니다
+- **급할 때 몇 쪽만**은 큰 모델(Claude·GPT·Gemini)에게 쪽 그림을 주고 옮기게 해도 됩니다 — 「한 글자도 고치지 말 것, 읽기 애매하면 `[?]`, 식 번호 `(7)`은 수식 밖에, 쪽마다 `<!-- p.N (PDF M) -->`」를 지시합니다
 - **변환본을 그대로 믿지 않습니다.** 한글 깨짐, 표 붕괴, 빈 수식(`$$ $$`)을 열어 보고, 노트에 옮긴 수식은 원본 쪽 그림과 대조합니다
 - **변환본에는 쪽 번호가 없습니다.** 노트의 교재 인용에는 원본의 절·쪽을 답니다(`Strang ILA §3.2 p.24`, [METHOD.md](METHOD.md)). PDF 쪽과 책 쪽이 다르면 책마다 한 번 확인합니다
 - 교재 변환본은 저작물입니다. 자료 폴더(git 밖)에 두고 공개 저장소에 넣지 않습니다
