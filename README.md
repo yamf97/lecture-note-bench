@@ -18,51 +18,65 @@
 
 노트 쓰기는 사람(또는 AI)이 합니다. 도구는 그 앞의 재료를 만들고, 뒤에서 근거를 확인합니다. 판서를 옮긴 부분은 검사기가 대조할 수 없으므로, 읽기 애매한 곳을 따로 모아 사람이 장면 사진과 맞춰 봅니다.
 
-## 도구 (`tools/`)
+## 설치
 
-| 도구 | 하는 일 |
+```bash
+pipx install git+https://github.com/yamf97/lecture-note-bench
+lnb --help      # 하위 명령과 흐름
+lnb doctor      # 바깥 프로그램·whisper 모델 점검. 빠진 것은 설치 명령을 알려 줍니다
+```
+
+- 패키지 이름은 `lecture-note-bench`, 명령은 `lnb`입니다. Python 3.9 이상
+- yt-dlp·youtube-transcript-api는 같이 깔립니다. ffmpeg·whisper-cli·pdftotext 같은 바깥 프로그램은 `lnb doctor`가 없는 것과 설치법을 알려 줍니다 (macOS: `brew install ffmpeg whisper-cpp poppler`)
+- **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 ggml 모델 파일 하나를 받아 둡니다:
+
+  ```bash
+  mkdir -p ~/.cache/whisper.cpp
+  curl -L -o ~/.cache/whisper.cpp/ggml-large-v3-turbo-q5_0.bin \
+    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin   # 약 574MB
+  ```
+
+  `~/.cache/whisper.cpp/`·`~/models/whisper/`에 두면 저절로 찾습니다. 다른 곳에 두었으면 `export WHISPER_MODEL=<파일 경로>` 또는 `lnb transcribe -m <파일 경로>`
+- 설치하지 않고 저장소에서 바로 `python3 tools/<도구>.py …`로 불러도 똑같이 돕니다 (`tools/`는 `src/lnb/`를 부르는 껍데기)
+
+## 하위 명령
+
+| 명령 (`tools/` 파일) | 하는 일 |
 |---|---|
-| `fetch.py` | 영상 사이트에서 강의 자막(필요하면 영상·음성)을 받습니다. 강의당 요청 1번, 20–40초 무작위 대기, 차단 응답이면 즉시 멈춤, 다시 돌리면 이어받기. 재생목록·id 목록은 강좌 폴더의 `fetch.json`, 한 편은 `--url`. 자막이 없으면 `--transcribe-missing`으로 로컬 전사. **아래 「자료를 받을 때」를 먼저 읽어 주세요** |
-| `transcribe.py` | 자막이 없는 강의의 음성·영상을 로컬 whisper(whisper.cpp)로 받아써 `<이름> (whisper).srt`를 만듭니다. 밖으로 보내는 것 없이 이 컴퓨터에서만 돕니다. 끝 시각이 음성보다 많이 짧으면 경고합니다 |
-| `vtt_text.py` | 자막을 30초 단위 `[mm:ss]` 읽기본으로 바꿉니다(`--cues`는 큐마다 정확한 시각). 사람이 단 VTT, 자동 자막(yt-dlp), SRT, youtube_transcript_api 출력을 읽습니다 |
-| `frames.py` | 강의 영상에서 판서·슬라이드 장면을 시각과 함께 뽑습니다. 화면이 크게 바뀌기 **직전**(지우기 전 가득 찬 칠판)을 고르고, 빈 구간은 간격으로 채우고, 새 글씨가 없는 장면은 버립니다. `--at`으로 직접 고르고, `--scores`로 강좌에 맞는 기준을 정합니다 |
-| `check_note.py` | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 심어 둔 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강좌 목록, 라벨 인용(`원문 "…"`, 여러 강의 중 어디든), PDF 자료, 시각 범위, 공백 무시 대조(한국어 자막용), 용어·기호 설명 빠짐 검사를 켭니다 |
-| `run_gateway.py` | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다. 아래 실험에 썼습니다 |
-
-### 필요한 것
-
-- Python 3.9 이상. `vtt_text.py`·`check_note.py`는 표준 라이브러리만 씁니다
-- `fetch.py`: [yt-dlp](https://github.com/yt-dlp/yt-dlp), (재생목록 자막) youtube_transcript_api
-- `transcribe.py`: ffmpeg, whisper.cpp의 `whisper-cli`, ggml 모델 파일
-- `frames.py`: ffmpeg
-- `check_note.py`의 PDF 인용 대조: pdftotext
+| `lnb fetch` (`fetch.py`) | 영상 사이트에서 강의 자막(필요하면 영상·음성)을 받습니다. 강의당 요청 1번, 20–40초 무작위 대기, 차단 응답이면 즉시 멈춤(종료 코드 2), 다시 돌리면 이어받기. 재생목록·id 목록은 강좌 폴더의 `fetch.json`, 한 편은 `--url`. 자막이 없으면 `--transcribe-missing`으로 로컬 전사. **아래 「자료를 받을 때」를 먼저 읽어 주세요** |
+| `lnb transcribe` (`transcribe.py`) | 자막이 없는 강의의 음성·영상을 로컬 whisper(whisper.cpp)로 받아써 `<이름> (whisper).srt`를 만듭니다. 밖으로 보내는 것 없이 이 컴퓨터에서만 돕니다. 끝 시각이 음성보다 많이 짧으면 경고합니다 |
+| `lnb text` (`vtt_text.py`) | 자막을 30초 단위 `[mm:ss]` 읽기본으로 바꿉니다(`--cues`는 큐마다 정확한 시각). 사람이 단 VTT, 자동 자막(yt-dlp), SRT, youtube_transcript_api 출력을 읽습니다 |
+| `lnb frames` (`frames.py`) | 강의 영상에서 판서·슬라이드 장면을 시각과 함께 뽑습니다. 화면이 크게 바뀌기 **직전**(지우기 전 가득 찬 칠판)을 고르고, 빈 구간은 간격으로 채우고, 새 글씨가 없는 장면은 버립니다. `--at`으로 직접 고르고, `--scores`로 강좌에 맞는 기준을 정합니다 |
+| `lnb check` (`check_note.py`) | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 심어 둔 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강좌 목록, 라벨 인용(`원문 "…"`, 여러 강의 중 어디든), PDF 자료, 시각 범위, 공백 무시 대조(한국어 자막용), 용어·기호 설명 빠짐 검사를 켭니다 |
+| `lnb doctor` | 바깥 프로그램·whisper 모델이 있는지 보고 설치법을 알립니다. 빠진 것이 있으면 종료 코드 1 |
+| (`tools/run_gateway.py`만) | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다. 아래 실험에 썼습니다. `lnb`에는 넣지 않았습니다 |
 
 ### 실행
 
 ```bash
 # 강의 한 편 받기 (자막 + 판서용 영상, 자막 없으면 로컬 전사)
-python3 tools/fetch.py --url <영상 주소> -o 강좌폴더 --video --transcribe-missing -l ko
+lnb fetch --url <영상 주소> -o 강좌폴더 --video --transcribe-missing -l ko
 
-# 재생목록: 강좌 폴더에 fetch.json 을 두고 (형식은 fetch.py 머리말) 한 번에 10편씩
-python3 tools/fetch.py 강좌폴더 --max 10
+# 재생목록: 강좌 폴더에 fetch.json 을 두고 (형식은 lnb fetch --help) 한 번에 10편씩
+lnb fetch 강좌폴더 --max 10
 
 # 자막이 없는 녹음을 받아쓰기 → "강의 (whisper).srt"
-python3 tools/transcribe.py 강의.mp3 -l ko
+lnb transcribe 강의.mp3 -l ko
 
 # 읽기본 (정확한 시각은 --cues)
-python3 tools/vtt_text.py lectures/Strang_2020_vision_LA/00-intro.vtt --cues
+lnb text lectures/Strang_2020_vision_LA/00-intro.vtt --cues
 
 # 판서 장면 → 강의_frames/mm-ss.jpg + index.tsv (처음 쓰는 강좌는 --scores 로 기준부터)
-python3 tools/frames.py 강의.mp4 --scores
-python3 tools/frames.py 강의.mp4
-python3 tools/frames.py 강의.mp4 --at 05:32,12:00
+lnb frames 강의.mp4 --scores
+lnb frames 강의.mp4
+lnb frames 강의.mp4 --at 05:32,12:00
 
-# 노트 검사: 이 저장소의 실험 결과
-python3 tools/check_note.py experiments/results/*.md
+# 노트 검사: 이 저장소의 실험 결과 (저장소 안에서)
+lnb check experiments/results/*.md
 
-# 다른 저장소의 노트: 그 저장소 뿌리에 check_note.json 을 두고 (형식은 check_note.py 머리말)
-python3 tools/check_note.py --all
-python3 tools/check_note.py 노트.md --lectures 1 2 6
+# 다른 저장소의 노트: 그 저장소 뿌리에 check_note.json 을 두고 (형식은 lnb check --help)
+lnb check --all
+lnb check 노트.md --lectures 1 2 6
 ```
 
 ### 알아 둘 점
@@ -81,7 +95,7 @@ git clone https://github.com/yamf97/lecture-note-bench.git
 ln -s "$PWD/lecture-note-bench/skills/lecture-note" ~/.claude/skills/lecture-note
 ```
 
-스킬은 도구를 링크 너머 저장소의 `tools/`에서 찾습니다. 링크 대신 복사했다면 스킬 안의 `T=` 줄을 저장소 경로로 바꾸세요.
+스킬은 `lnb`가 설치돼 있으면 그것을 부르고, 없으면 링크 너머 저장소의 `tools/`를 부릅니다. 링크 대신 복사했다면 스킬 안의 `T=` 줄을 저장소 경로로 바꾸세요.
 
 ## 자료를 받을 때
 
@@ -92,7 +106,7 @@ ln -s "$PWD/lecture-note-bench/skills/lecture-note" ~/.claude/skills/lecture-not
 - 받은 자막·영상·장면 사진은 개인 공부에만 쓰고 다시 배포하지 마세요. 이 저장소에 실린 강의 자료는 라이선스가 허락하는 것뿐입니다
 - 요청을 천천히 보내는 장치(강의당 1번, 20–40초 대기, 차단 응답이면 즉시 멈춤)는 사이트에 부담을 주지 않기 위한 것입니다. 우회하는 데 쓰지 마세요
 
-`vtt_text.py`·`transcribe.py`·`frames.py`·`check_note.py`는 이미 가진 파일만 다룹니다.
+`text`·`transcribe`·`frames`·`check`는 이미 가진 파일만 다룹니다.
 
 ## 실험: 모델 다섯 개의 블라인드 비교
 

@@ -16,6 +16,10 @@ T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../.
 # 링크 없이 복사해 설치했으면: T=<저장소를 받은 경로>/tools
 ```
 
+**`lnb`가 설치돼 있으면**(`command -v lnb`) 아래 `python3 $T/<도구>.py` 대신 하위 명령을 부른다 — 동작은 같다:
+`fetch.py`→`lnb fetch` · `transcribe.py`→`lnb transcribe` · `vtt_text.py`→`lnb text` · `frames.py`→`lnb frames` · `check_note.py`→`lnb check`.
+처음이거나 명령이 안 되면 `lnb doctor`로 빠진 프로그램·모델과 설치법을 본다.
+
 ```
 주소 ─① fetch ─┬─ 자막 있음 ───────────────┐
                └─ 없음 → transcribe(전사) ─┼─② vtt_text 읽기본 ─④ 노트 ─⑤ check_note
@@ -36,7 +40,7 @@ T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../.
 python3 $T/fetch.py --url <주소> -o <자료 폴더> --video --transcribe-missing -l ko   # 한 편
 python3 $T/fetch.py <자료 폴더> --max 10                                             # 재생목록: 폴더에 fetch.json
 ```
-- 재생목록은 자료 폴더에 `fetch.json`을 먼저 만든다 (형식은 `fetch.py` 머리말)
+- 재생목록은 자료 폴더에 `fetch.json`을 먼저 만든다 (형식은 `fetch.py` 머리말 · `lnb fetch --help`)
 - **종료코드 2 = 차단** — 그대로 멈추고 사용자에게 보고한다. 재시도하거나 우회하지 않는다
 - 자막이 없어 전사했으면 `… (whisper).srt` — 자동 전사라 숫자·용어 오인식이 있다 (노트에서 정정은 따로 표시)
 
