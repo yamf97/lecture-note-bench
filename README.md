@@ -56,7 +56,7 @@ markitdown 슬라이드.pptx -o 자료폴더/md/슬라이드.md
 위 재료(자막 읽기본·판서 장면·교재 md)를 옆에 두고 노트를 씁니다. 사람이 써도, AI에게 맡겨도 규칙은 같습니다. 자세한 규칙은 [METHOD.md](METHOD.md).
 
 1. **읽기** — `lnb text`의 30초 읽기본으로 흐름을 잡고, 인용할 곳은 `--cues`로 정확한 시각을 찾습니다. 판서는 장면 사진으로, 교재는 md 변환본으로 읽습니다
-2. **옮기기** — 인용은 글자 그대로, 바로 뒤에 좌표: 영상 `[Vision 00 01:47]`(그 말이 시작되는 큐) · 교재 `§3.2 p.24`(원본 쪽) · 판서 장면 `mm:ss`. 판서·교재 수식은 LaTeX로 옮기고, 읽기 애매한 글자는 추측하지 않고 `[원문 미확인]`과 노트 끝 「판독 불확실 모음」 표에 모읍니다
+2. **옮기기** — 인용은 글자 그대로, 바로 뒤에 좌표: 영상 `[Vision 00 01:47]`(그 말이 시작되는 큐) · 교재 ``"…" `Strang ILA §3.2 p.24` ``(원본 쪽, 책 이름은 `check_note.json`에 등록한 이름) · 판서 장면 `mm:ss`. 판서·교재 수식은 LaTeX로 옮기고, 읽기 애매한 글자는 추측하지 않고 `[원문 미확인]`과 노트 끝 「판독 불확실 모음」 표에 모읍니다
 3. **설명 붙이기** — 원문 밖 설명은 `[외부 추론]`, 근거를 못 찾은 곳은 `[정보 없음]`. 쉬운 설명과 별도로 정확한 정의·성립 조건을 좌표와 함께 적습니다(METHOD §3)
 4. **계산 심기** — 계산한 곳마다 `<!-- 검산: M([[1,2],[3,4]]).T == M([[1,3],[2,4]]) -->`처럼 식을 심어 둡니다
 5. **검사** — `lnb check 노트.md`: 영상 인용이 자막에, 교재 인용이 원문 md(`lnb pages`)의 그 쪽에 글자 그대로 있는지, 시각이 맞는지, 검산식이 성립하는지. 통과할 때까지 고칩니다. 판서 인용은 아직 대조하지 못합니다
@@ -221,7 +221,7 @@ A person (or an AI) writes the note. The tools prepare the material before writi
 ### Writing a note
 
 1. **Read**: get the flow from the 30-second reading text (`lnb text`), and find exact times with `--cues`.
-2. **Quote**: copy quotes verbatim, each followed by its source: video `[Vision 00 01:47]`, textbook `§3.2 p.24`, or board frame `mm:ss`. Mark unclear readings `[원문 미확인]` (unverified) instead of guessing.
+2. **Quote**: copy quotes verbatim, each followed by its source: video `[Vision 00 01:47]`, textbook ``"…" `Strang ILA §3.2 p.24` `` (the book name as registered in `check_note.json`, so `lnb check` can find it), or board frame `mm:ss`. Mark unclear readings `[원문 미확인]` (unverified) instead of guessing.
 3. **Explain**: tag explanations from outside the source `[외부 추론]` (outside inference), and tag points with no source `[정보 없음]` (not in source).
 4. **Embed checks**: wherever you calculate, embed a check such as `<!-- 검산: M([[1,2],[3,4]]).T == M([[1,3],[2,4]]) -->`.
 5. **Check**: run `lnb check note.md` and fix the note until it passes.
@@ -237,7 +237,7 @@ lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and 
 
 - Requires Python 3.9+. **Built and tested on macOS only**; Linux and Windows are untested.
 - You need a whisper model only for `transcribe`. Put a ggml model file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
-- You can run the tools without installing: `python3 tools/<tool>.py`.
+- You can run the tools without installing: `python3 tools/<file>.py`. The files are `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py` and `check_note.py` (`check`); `doctor` needs the installed `lnb`.
 
 ### Commands
 
@@ -251,7 +251,7 @@ lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and 
 | `lnb check` | Checks finished notes: video quotes against the captions at the stated time, textbook quotes against the cited page, and embedded calculations. Each repository configures it with `check_note.json`. |
 | `lnb doctor` | Reports missing external programs and models. |
 
-**Textbooks and slides**: convert them to md with existing tools, [MinerU](https://github.com/opendatalab/MinerU) for PDFs (`-b pipeline` is about 6× faster) or [MarkItDown](https://github.com/microsoft/markitdown) for Office files. Then run `lnb pages` and register the result under `books` in `check_note.json`. Do not trust conversions blindly: compare transcribed formulas with the page image. Converted textbooks are copyrighted, so keep them out of public repositories.
+**Textbooks and slides**: convert them to md with existing tools, [MinerU](https://github.com/opendatalab/MinerU) for PDFs (`-b pipeline` is about 6× faster) or [MarkItDown](https://github.com/microsoft/markitdown) for Office files. For quote checking, run `lnb pages` on MinerU's `*_content_list.json` or on a PDF with a text layer, and register the result under `books` in `check_note.json`. MarkItDown output has no page numbers, so `lnb pages` cannot use it. Do not trust conversions blindly: compare transcribed formulas with the page image. Converted textbooks are copyrighted, so keep them out of public repositories.
 
 ### Experiment: five models, read blind
 
