@@ -28,7 +28,6 @@ import tempfile
 from .vtt_text import parse, mmss
 
 MODEL_DIRS = [
-    "~/Library/Application Support/irum/whisper",
     "~/.cache/whisper.cpp",
     "~/.cache/whisper",
     "~/models/whisper",
