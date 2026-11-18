@@ -41,8 +41,8 @@ markitdown 슬라이드.pptx -o 자료폴더/md/슬라이드.md
 - **교재 인용 검사**: 변환본을 `lnb pages`로 쪽 표시가 든 원문 md로 만들고 `check_note.json`에 등록하면, `lnb check`가 노트의 `"…" \`Strang ILA §2.4 p.68\``를 그 쪽과 대조합니다 (수식은 빼고 단어로, 수식은 검산식이 따로)
 
   ```bash
-  # MinerU 결과(json) → 쪽 표시 원문. --pdf-start = 변환한 첫 쪽의 PDF 쪽(1부터), 책 쪽 = PDF 쪽 − offset
-  lnb pages 자료폴더/md/교재/hybrid_auto/교재_content_list.json --pdf-start 41 --offset 10 -o 자료폴더/strang-ila.md
+  # MinerU 결과(json) → 쪽 표시 원문. 폴더 이름은 방식마다 다르다(pipeline: auto, hybrid: hybrid_auto). --pdf-start = 변환한 첫 쪽의 PDF 쪽(1부터), 책 쪽 = PDF 쪽 − offset
+  lnb pages 자료폴더/md/교재/auto/교재_content_list.json --pdf-start 41 --offset 10 -o 자료폴더/strang-ila.md
   # 글자 층이 살아 있는 PDF는 MinerU 없이 바로
   lnb pages 강의록.pdf --first 1 --last 30 -o 자료폴더/강의록.md
   ```
