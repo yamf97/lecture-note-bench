@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lecture-note-bench"
+dynamic = ["version"]
+description = "Lecture video, audio and captions into source-faithful study-note material (lnb)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = ["yt-dlp", "youtube-transcript-api"]
+
+[project.scripts]
+lnb = "lnb.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yamf97/lecture-note-bench"
+
+[tool.setuptools.dynamic]
+version = {attr = "lnb.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
