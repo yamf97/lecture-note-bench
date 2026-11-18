@@ -34,11 +34,26 @@ else
   bad "tag $tag is not on GitHub (push it first: git push origin $tag)"; exit 1
 fi
 [ "$tag" = "v$version" ] || echo "  note  source is $version; checking $tag anyway"
-if grep -q "최신 버전 $version" README.md && grep -q "Latest: $version" README.md \
-   && grep -q "^## $version " CHANGELOG.md; then
-  ok "README (KO, EN) and CHANGELOG name $version"
+# Release notes are read from the tag itself, not from the working tree
+# (the checkout may have moved on since the tag).
+tv="${tag#v}"
+git fetch -q origin "refs/tags/$tag:refs/tags/$tag" 2>/dev/null
+if git show "$tag:CHANGELOG.md" 2>/dev/null | grep -q "^## $tv "; then
+  ok "CHANGELOG at $tag has a $tv section"
 else
-  bad "README 「최신 버전」/「Latest」 lines or CHANGELOG section do not name $version"
+  bad "CHANGELOG at $tag has no '## $tv' section"
+fi
+readme="$(git show "$tag:README.md" 2>/dev/null)"
+if printf '%s' "$readme" | grep -q "최신 버전 $tv" && printf '%s' "$readme" | grep -q "Latest: $tv"; then
+  ok "README at $tag names $tv (KO, EN)"
+elif printf '%s' "$readme" | grep -q "최신 버전\|Latest:"; then
+  bad "README at $tag names a different version in its latest-version lines"
+else
+  echo "  note  README at $tag has no latest-version lines (added after 0.2.0)"
+fi
+if command -v gh >/dev/null 2>&1; then
+  if gh release view "$tag" >/dev/null 2>&1; then ok "GitHub release $tag exists"
+  else bad "no GitHub release $tag (scripts/release-notes.sh $tv | gh release create $tag --notes-file -)"; fi
 fi
 
 # 2. Pinned install
