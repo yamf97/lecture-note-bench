@@ -1,29 +1,30 @@
 ---
 name: lecture-note
-description: "강의 영상(주소·재생목록·영상 파일)으로 근거를 지키는 학습 노트를 만든다 — 자막 받기(없으면 로컬 whisper 전사) → 읽기본 → 판서·슬라이드 장면 뽑기 → 노트 작성 → 인용·시각·계산 검사까지 lecture-note-bench 의 tools/ 를 순서대로 부른다. '이 강의 노트 만들어 줘', '영상 주소 줄게 노트로', '판서를 노트로 옮겨 줘', '이 재생목록 자막 받아 줘', '강의 전사해서 정리' 같은 요청 시 사용. 단, 논문 요약이나 영상을 그냥 훑어보는 요청의 대체는 아니며, 이미 쓴 노트의 검사만 원하면 check_note.py 를 바로 부른다."
+description: "강의 영상(주소·재생목록·영상 파일)으로 근거를 지키는 학습 노트를 만든다 — 자막 받기(없으면 로컬 whisper 전사) → 읽기본 → 판서·슬라이드 장면 뽑기 → 교재·슬라이드 PDF를 md로 → 노트 작성 → 인용·시각·계산 검사까지 lecture-note-bench 의 lnb 명령(설치 안 했으면 저장소 tools/)을 순서대로 부른다. '이 강의 노트 만들어 줘', '영상 주소 줄게 노트로', '판서를 노트로 옮겨 줘', '이 재생목록 자막 받아 줘', '강의 전사해서 정리' 같은 요청 시 사용. 단, 논문 요약이나 영상을 그냥 훑어보는 요청의 대체는 아니며, 이미 쓴 노트의 검사만 원하면 lnb check 를 바로 부른다."
 allowed-tools: Bash Read Write Edit
 ---
 
 # 강의 영상 → 학습 노트
 
-이 스킬은 [lecture-note-bench](https://github.com/yamf97/lecture-note-bench)의 `tools/`를 순서대로 부른다.
+이 스킬은 [lecture-note-bench](https://github.com/yamf97/lecture-note-bench)의 명령 `lnb`를 순서대로 부른다.
 **명령을 새로 조립하거나 같은 일을 하는 스크립트를 새로 만들지 않는다.** 모자라는 기능은 그 도구에 옵션으로 넓힌다.
 
-도구 위치 — 이 스킬 폴더가 저장소의 `skills/lecture-note/`이므로 `../../tools`다:
+- 설치: `pipx install git+https://github.com/yamf97/lecture-note-bench` (`command -v lnb`로 확인)
+- 처음이거나 명령이 안 되면 `lnb doctor` — 빠진 프로그램(ffmpeg·whisper-cli·pdftotext)·whisper 모델과 설치법을 알려 준다
+- 각 명령의 옵션·설정 형식은 `lnb <명령> --help`
+
+**`lnb`를 설치하지 않았으면** 저장소의 `tools/`로 같은 일을 한다 — 아래 `lnb <명령>`을 `python3 $T/<파일>`로 바꿔 부른다
+(`fetch`→`fetch.py` · `transcribe`→`transcribe.py` · `text`→`vtt_text.py` · `frames`→`frames.py` · `check`→`check_note.py`):
 
 ```bash
 T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../../tools" && pwd)"
 # 링크 없이 복사해 설치했으면: T=<저장소를 받은 경로>/tools
 ```
 
-**`lnb`가 설치돼 있으면**(`command -v lnb`) 아래 `python3 $T/<도구>.py` 대신 하위 명령을 부른다 — 동작은 같다:
-`fetch.py`→`lnb fetch` · `transcribe.py`→`lnb transcribe` · `vtt_text.py`→`lnb text` · `frames.py`→`lnb frames` · `check_note.py`→`lnb check`.
-처음이거나 명령이 안 되면 `lnb doctor`로 빠진 프로그램·모델과 설치법을 본다.
-
 ```
-주소 ─① fetch ─┬─ 자막 있음 ───────────────┐
-               └─ 없음 → transcribe(전사) ─┼─② vtt_text 읽기본 ─④ 노트 ─⑤ check_note
-   영상 ─③ frames(판서·슬라이드 장면) ──────┘
+주소 ─① lnb fetch ─┬─ 자막 있음 ───────────────────┐
+                   └─ 없음 → lnb transcribe(전사) ─┼─② lnb text 읽기본 ─④ 노트 ─⑤ lnb check
+   영상 ─③ lnb frames(판서·슬라이드 장면) ──────────┘
 ```
 
 ## 0. 시작 전 — 사용자에게 한 번에 확인할 것
@@ -32,31 +33,32 @@ T="$(cd "$(dirname "$(readlink -f ~/.claude/skills/lecture-note/SKILL.md)")/../.
 - **노트를 어디에, 어떤 규칙으로** — 사용자의 저장소에 노트 규칙 문서가 있으면 먼저 읽는다. 없으면 `METHOD.md`
 - **자료 폴더** — 자막·영상·장면은 노트와 분리해 git 밖에 둔다. 공개 저장소에 넣지 않는다
 - **판서·슬라이드가 중요한 강의인가** — 그렇다면 영상도 받는다(③). 말 위주면 자막만
+- **교재·슬라이드·강의록이 있나** — 있으면 어느 장·절·쪽까지 쓸지 (③-2, 변환이 쪽당 수 분)
 - 재생목록이면 이번에 몇 편까지 (기본 10, 천천히 받는다)
 
-## ① 받기 — `fetch.py`
+## ① 받기 — `lnb fetch`
 
 ```bash
-python3 $T/fetch.py --url <주소> -o <자료 폴더> --video --transcribe-missing -l ko   # 한 편
-python3 $T/fetch.py <자료 폴더> --max 10                                             # 재생목록: 폴더에 fetch.json
+lnb fetch --url <주소> -o <자료 폴더> --video --transcribe-missing -l ko   # 한 편
+lnb fetch <자료 폴더> --max 10                                             # 재생목록: 폴더에 fetch.json
 ```
-- 재생목록은 자료 폴더에 `fetch.json`을 먼저 만든다 (형식은 `fetch.py` 머리말 · `lnb fetch --help`)
+- 재생목록은 자료 폴더에 `fetch.json`을 먼저 만든다 (형식은 `lnb fetch --help`)
 - **종료코드 2 = 차단** — 그대로 멈추고 사용자에게 보고한다. 재시도하거나 우회하지 않는다
 - 자막이 없어 전사했으면 `… (whisper).srt` — 자동 전사라 숫자·용어 오인식이 있다 (노트에서 정정은 따로 표시)
 
-## ② 읽기본 — `vtt_text.py`
+## ② 읽기본 — `lnb text`
 
 ```bash
-python3 $T/vtt_text.py <자막>            # 30초 칸 [mm:ss] 문단 — 훑어 읽기
-python3 $T/vtt_text.py <자막> --cues     # 큐마다 정확한 시각 — 인용 좌표는 여기서
+lnb text <자막>            # 30초 칸 [mm:ss] 문단 — 훑어 읽기
+lnb text <자막> --cues     # 큐마다 정확한 시각 — 인용 좌표는 여기서
 ```
 
-## ③ 판서·슬라이드 장면 — `frames.py`
+## ③ 판서·슬라이드 장면 — `lnb frames`
 
 ```bash
-python3 $T/frames.py <영상> --scores          # 그 강좌 처음이면: 점수 분포 보고 --scene 정하기
-python3 $T/frames.py <영상> [--scene 0.05]    # 바뀌기 직전 장면 + 30초 빈 구간 채우기 + 중복 제거
-python3 $T/frames.py <영상> --at 05:32,12:00  # 자막 읽다 "여기 판서" 싶은 곳
+lnb frames <영상> --scores          # 그 강좌 처음이면: 점수 분포 보고 --scene 정하기
+lnb frames <영상> [--scene 0.05]    # 바뀌기 직전 장면 + 30초 빈 구간 채우기 + 중복 제거
+lnb frames <영상> --at 05:32,12:00  # 자막 읽다 "여기 판서" 싶은 곳
 ```
 - 결과 `<영상>_frames/mm-ss.jpg` + `index.tsv`. 장면 사진은 직접 본다. 많으면 ffmpeg `tile`로 한 장에 모아 본다
 - 펜으로 서서히 쓰는 강의는 장면 점수가 거의 0이라 30초 간격 장면이 대신한다. 지우지 않는 칠판이면 마지막 장면에 판서 전체가 있다
@@ -64,23 +66,37 @@ python3 $T/frames.py <영상> --at 05:32,12:00  # 자막 읽다 "여기 판서" 
   판서는 검사기가 대조할 수 없으니 사람이 사진과 맞춰 보게 남긴다
 - 자막에 "여기 보면", "이렇게 쓰면" 같은 말이 나오는데 장면이 없으면 `--at`으로 더 뽑는다
 
+## ③-2 문서 재료 — 교재·슬라이드·강의록 → md
+
+lnb 밖의 공개 도구를 쓴다 (사용자 환경에 변환 래퍼가 있으면 그것을 — 내 환경판 스킬 참고):
+
+```bash
+mineru -p <교재.pdf> -o <자료 폴더>/md -s <시작쪽> -e <끝쪽>   # PDF·사진 → md, 수식 LaTeX. 쪽은 0부터. 필요한 쪽만
+markitdown <슬라이드.pptx> -o <자료 폴더>/md/<이름>.md        # 오피스 → md. 수식은 깨진다
+```
+- 변환본을 열어 확인한다 — 한글·표·빈 수식(`$$ $$`). 성공 메시지만 믿지 않는다
+- 노트에 옮긴 수식은 원본 쪽 그림과 대조한다. 읽기 애매하면 판서와 같이 `[원문 미확인]` + 「판독 불확실 모음」
+- 교재 인용 좌표는 **원본의 절·쪽**(`§3.2 p.24`) — 변환본에는 쪽 번호가 없다
+- 변환본은 자료 폴더에. 공개 저장소에 넣지 않는다
+
 ## ④ 노트 쓰기 — `METHOD.md`
 
 - 인용은 글자 그대로 + 좌표 (그 말이 **시작되는 큐**의 시각). 고쳐 쓴 문장은 인용으로 표시하지 않는다
 - 원문 밖 설명은 `[외부 추론]`, 못 찾은 것은 `[정보 없음]`, 대조 못 한 것은 `[원문 미확인]`
 - 계산한 곳마다 `<!-- 검산: … == … -->`를 심는다
 - 판서 장면을 근거로 쓴 곳에는 장면 시각(`mm:ss`, frames의 파일 이름)을 적는다
+- 교재·슬라이드를 근거로 쓴 곳에는 원본 좌표(`§절 p.쪽`, `슬라이드 2/30`)를 적는다
 
-## ⑤ 검사 — `check_note.py`
+## ⑤ 검사 — `lnb check`
 
 ```bash
-python3 $T/check_note.py <노트>     # 노트 저장소 뿌리의 check_note.json 을 스스로 찾는다
+lnb check <노트>     # 노트 저장소 뿌리의 check_note.json 을 스스로 찾는다
 ```
-- 새 강좌면 그 저장소 `check_note.json`에 강좌를 등록해야 인용이 대조된다 (`lectures` 또는 `labels` — 형식은 `check_note.py` 머리말)
+- 새 강좌면 그 저장소 `check_note.json`에 강좌를 등록해야 인용이 대조된다 (`lectures` 또는 `labels` — 형식은 `lnb check --help`)
 - **돌려 보지 않고 "통과"라고 말하지 않는다.** 실패는 고치고 다시 돌린다. 처음 설정한 강좌는 인용 하나를 일부러 틀리게 바꿔 실패하는지도 본다 (설정이 틀리면 검사 없이 통과할 수 있다)
 
 ## 끝 — 보고
 
-- 자동으로 된 것(받기·전사·장면·검사 결과)과 **사람이 볼 것**(판서 옮김·판독 불확실 모음·전사 오인식·번역)을 나눠 보고한다
+- 자동으로 된 것(받기·전사·장면·문서 변환·검사 결과)과 **사람이 볼 것**(판서·교재 수식 옮김·판독 불확실 모음·전사 오인식·번역)을 나눠 보고한다
 - 영상 파일은 크다 — 장면을 뽑은 뒤 지울지 남길지 사용자에게 묻는다
 - 강의 자료(자막·영상·장면)는 저작물이다. 노트만 커밋하고, 자료는 공개 저장소에 넣지 않는다
