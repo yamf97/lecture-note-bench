@@ -2,6 +2,8 @@
 
 Versions follow `MAJOR.MINOR.PATCH`. While the major version is 0, a minor bump (0.1 → 0.2) means new features or changed check results, and a patch bump (0.2.0 → 0.2.1) means bug fixes only. Documentation-only changes do not bump the version.
 
+Releasing: bump `src/lnb/__init__.py`, add a section here, commit, tag `vX.Y.Z`, push the commit and the tag, then run `scripts/release-check.sh`.
+
 Install a specific version with `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`.
 
 ## 0.2.0 — 2026-11-18
