@@ -2,6 +2,8 @@
 
 [English](#english)
 
+> **최신 버전 0.2.0** (2026-11-18) — 교재 인용 검사가 들어왔습니다. 새 명령 `lnb pages`로 교재·강의록을 쪽 표시가 든 원문으로 만들면, `lnb check`가 노트의 교재 인용을 그 쪽과 대조합니다. 설치한 `lnb check`는 이제 저장소마다 `check_note.json`이 필요합니다. 바뀐 점 전체는 [CHANGELOG.md](CHANGELOG.md), 업데이트는 `pipx upgrade lecture-note-bench`
+
 강의 영상으로 **근거를 지키는 학습 노트**를 만드는 도구와, 그 방법을 시험한 실험입니다.
 
 - **도구 `lnb`**: 강의 자막·영상을 받아 읽기본과 판서 장면을 만들고, 다 쓴 노트의 인용·시각·계산을 원문과 기계로 대조합니다. `pipx`로 설치하는 명령줄 도구이고 AI 없이도 씁니다 (아래 「설치」)
@@ -197,6 +199,8 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 ---
 
 ## English
+
+> **Latest: 0.2.0** (2026-11-18). This version adds the textbook quote check: the new `lnb pages` command turns a textbook or handout into page-marked text, and `lnb check` then checks textbook quotes against the cited page. An installed `lnb check` now needs a `check_note.json` in each repository. See [CHANGELOG.md](CHANGELOG.md) for all changes, and update with `pipx upgrade lecture-note-bench`.
 
 ### What this is
 

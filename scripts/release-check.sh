@@ -34,6 +34,12 @@ else
   bad "tag $tag is not on GitHub (push it first: git push origin $tag)"; exit 1
 fi
 [ "$tag" = "v$version" ] || echo "  note  source is $version; checking $tag anyway"
+if grep -q "최신 버전 $version" README.md && grep -q "Latest: $version" README.md \
+   && grep -q "^## $version " CHANGELOG.md; then
+  ok "README (KO, EN) and CHANGELOG name $version"
+else
+  bad "README 「최신 버전」/「Latest」 lines or CHANGELOG section do not name $version"
+fi
 
 # 2. Pinned install
 if pipx install --force "git+$REPO_URL@$tag" >"$T/install.log" 2>&1; then
