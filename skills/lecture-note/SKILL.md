@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit
 **명령을 새로 조립하거나 같은 일을 하는 스크립트를 새로 만들지 않는다.** 모자라는 기능은 그 도구에 옵션으로 넓힌다.
 
 - 설치: `pipx install git+https://github.com/yamf97/lecture-note-bench` (`command -v lnb`로 확인)
-- `lnb`가 없으면 먼저 위 명령으로 설치한다(또는 아래 `tools/` 대안). 설치했는데 하위 명령이 안 되면 `lnb doctor` — 빠진 프로그램(ffmpeg·whisper-cli·pdftotext)·whisper 모델과 설치법을 알려 준다
+- `lnb`가 없으면 먼저 위 명령으로 설치한다(또는 아래 `tools/` 대안). 설치했는데 하위 명령이 안 되면 `lnb doctor` — 빠진 프로그램(ffmpeg·whisper-cli·pdftotext)·whisper 모델과 설치법을 알려 준다. 받아쓰기용 whisper 모델이 없으면 `lnb setup`(묻고 받아 SHA256 확인 — 사용자에게 574MB 받기를 확인받고 실행)
 - 각 명령의 옵션·설정 형식은 `lnb <명령> --help`
 
 **`lnb`를 설치하지 않았으면** 저장소의 `tools/`로 같은 일을 한다 — 아래 `lnb <명령>`을 `python3 $T/<파일>`로 바꿔 부른다

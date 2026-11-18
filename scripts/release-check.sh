@@ -71,7 +71,7 @@ case "$got" in
 esac
 
 # 4. Every subcommand answers --help
-for cmd in fetch transcribe text frames pages check doctor; do
+for cmd in fetch transcribe text frames pages check setup doctor; do
   if "$LNB" "$cmd" --help >/dev/null 2>&1; then ok "lnb $cmd --help"; else bad "lnb $cmd --help"; fi
 done
 

@@ -102,7 +102,7 @@ def main(argv=None, prog=None):
             sys.exit(f"{tool} 이 없다 — 머리말의 '필요한 것' 참고")
     model = find_model(a.model)
     if not model or not os.path.exists(model):
-        sys.exit("whisper 모델 파일을 못 찾았다 — -m 또는 WHISPER_MODEL 로 ggml-*.bin 경로를 줄 것")
+        sys.exit("whisper 모델 파일을 못 찾았다 — lnb setup 으로 받거나, -m 또는 WHISPER_MODEL 로 ggml-*.bin 경로를 줄 것")
     if a.outdir:
         os.makedirs(a.outdir, exist_ok=True)
     bad = sum(transcribe(f, model, a.language, a.outdir, a.force, a.threads) for f in a.files)

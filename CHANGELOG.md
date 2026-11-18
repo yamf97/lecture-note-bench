@@ -6,6 +6,14 @@ Releasing: bump `src/lnb/__init__.py`, add a section here, update the "Latest" l
 
 Install a specific version with `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`.
 
+## Unreleased
+
+### Added
+- **`lnb setup`**: prepares transcription. It prints the install command for whisper-cli and ffmpeg when they are missing (it never installs programs), and downloads the whisper model `ggml-large-v3-turbo-q5_0.bin` (about 574 MB) after asking. The URL is pinned to one Hugging Face commit, and the file is kept only if its size and SHA256 match; otherwise it is deleted. An existing model is checked, never overwritten. `--yes` skips the question.
+
+### Changed
+- `lnb doctor` and `lnb transcribe` point to `lnb setup` when the model is missing, instead of an unpinned `curl` command.
+
 ## 0.2.0 — 2026-11-18
 
 ### Added

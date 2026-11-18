@@ -70,21 +70,19 @@ markitdown 슬라이드.pptx -o 자료폴더/md/슬라이드.md
 pipx install git+https://github.com/yamf97/lecture-note-bench
 lnb --help      # 하위 명령과 흐름
 lnb doctor      # 바깥 프로그램·whisper 모델 점검. 빠진 것은 설치 명령을 알려 줍니다
+lnb setup       # 받아쓰기를 쓸 때만: whisper 모델을 받고 SHA256으로 확인합니다
 ```
 
 - 패키지 이름은 `lecture-note-bench`, 명령은 `lnb`입니다. Python 3.9 이상
 - 버전별 바뀐 점은 [CHANGELOG.md](CHANGELOG.md). 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`, 최신으로: `pipx upgrade lecture-note-bench`
 - **macOS에서 만들고 시험했습니다.** 리눅스·윈도우는 아직 시험하지 않았습니다 (파이썬과 바깥 프로그램은 거기에도 있지만, 설치 안내와 한글 출력 등은 확인 전입니다)
 - yt-dlp·youtube-transcript-api는 같이 깔립니다. ffmpeg·whisper-cli·pdftotext 같은 바깥 프로그램은 `lnb doctor`가 없는 것과 설치법을 알려 줍니다 (macOS: `brew install ffmpeg whisper-cpp poppler`)
-- **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 ggml 모델 파일 하나를 받아 둡니다:
+- **whisper 모델은 받아쓰기(`transcribe`)에만** 필요합니다. 자막이 있는 강의만 다루면 없어도 됩니다. 쓸 때는 `lnb setup`을 한 번 실행합니다:
+  - whisper-cli·ffmpeg가 없으면 설치 명령을 알려 줍니다 (직접 깔지는 않습니다)
+  - 모델 `ggml-large-v3-turbo-q5_0.bin`(약 574MB)을 받을지 묻고, Hugging Face의 **커밋에 고정된 주소**에서 받아 **크기와 SHA256이 맞을 때만** `~/.cache/whisper.cpp/`에 둡니다. 틀리면 지우고 멈춥니다
+  - 이미 있으면 해시만 확인하고, 다른 파일이면 덮어쓰지 않습니다
 
-  ```bash
-  mkdir -p ~/.cache/whisper.cpp
-  curl -L -o ~/.cache/whisper.cpp/ggml-large-v3-turbo-q5_0.bin \
-    https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin   # 약 574MB
-  ```
-
-  `~/.cache/whisper.cpp/`·`~/models/whisper/`에 두면 저절로 찾습니다. 다른 곳에 두었으면 `export WHISPER_MODEL=<파일 경로>` 또는 `lnb transcribe -m <파일 경로>`
+  다른 모델을 쓰려면 받을 필요 없이 `~/.cache/whisper.cpp/`·`~/models/whisper/`에 두거나, `export WHISPER_MODEL=<파일 경로>` 또는 `lnb transcribe -m <파일 경로>`
 - 설치하지 않고 저장소에서 바로 `python3 tools/<도구>.py …`로 불러도 똑같이 돕니다 (`tools/`는 `src/lnb/`를 부르는 껍데기)
 
 ## 하위 명령
@@ -97,6 +95,7 @@ lnb doctor      # 바깥 프로그램·whisper 모델 점검. 빠진 것은 설�
 | `lnb frames` (`frames.py`) | 강의 영상에서 판서·슬라이드 장면을 시각과 함께 뽑습니다. 화면이 크게 바뀌기 **직전**(지우기 전 가득 찬 칠판)을 고르고, 빈 구간은 간격으로 채우고, 새 글씨가 없는 장면은 버립니다. `--at`으로 직접 고르고, `--scores`로 강좌에 맞는 기준을 정합니다 |
 | `lnb check` (`check_note.py`) | 노트 검사기. 인용이 자막에 글자 그대로 있는지, 적은 시각이 그 말이 시작되는 시각과 맞는지, 심어 둔 검산식이 성립하는지 확인합니다. 저장소마다 `check_note.json`으로 강좌 목록, 라벨 인용(`원문 "…"`, 여러 강의 중 어디든), PDF 자료, 시각 범위, 공백 무시 대조(한국어 자막용), 용어·기호 설명 빠짐 검사를 켭니다 |
 | `lnb pages` (`pages.py`) | 교재·강의록을 쪽 표시가 든 원문 md(`<!-- p.68 (PDF 78) -->`)로 정리합니다. MinerU 결과(json)나 글자 층이 있는 PDF를 받고, 변환기는 직접 부르지 않습니다. `lnb check`의 교재 인용 대조에 씁니다 |
+| `lnb setup` | 받아쓰기 준비. whisper-cli·ffmpeg 설치 안내, whisper 모델을 묻고 받아 SHA256으로 확인합니다 (`--yes`면 묻지 않음) |
 | `lnb doctor` | 바깥 프로그램·whisper 모델이 있는지 보고 설치법을 알립니다. 빠진 것이 있으면 종료 코드 1 |
 | (`tools/run_gateway.py`만) | 같은 프롬프트를 OpenAI 호환 게이트웨이(OpenRouter 등)의 여러 모델에 보내고 결과를 저장합니다. 아래 실험에 썼습니다. `lnb`에는 넣지 않았습니다 |
 
@@ -238,12 +237,13 @@ A person (or an AI) writes the note. The tools prepare the material before writi
 pipx install git+https://github.com/yamf97/lecture-note-bench
 lnb --help
 lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and prints install commands
+lnb setup    # only for transcribe: downloads the whisper model and verifies its SHA256
 ```
 
 - Requires Python 3.9+. **Built and tested on macOS only**; Linux and Windows are untested.
 - Changes by version are in [CHANGELOG.md](CHANGELOG.md). To pin a version, use `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.2.0`; to update, use `pipx upgrade lecture-note-bench`.
-- You need a whisper model only for `transcribe`. Put a ggml model file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
-- You can run the tools without installing: `python3 tools/<file>.py`. The files are `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py` and `check_note.py` (`check`); `doctor` needs the installed `lnb`.
+- You need a whisper model only for `transcribe`. `lnb setup` asks before downloading `ggml-large-v3-turbo-q5_0.bin` (about 574 MB) from a commit-pinned Hugging Face URL, and keeps it in `~/.cache/whisper.cpp/` only if its size and SHA256 match. It never installs programs; it prints the `brew` command instead. To use another model, put a ggml file in `~/.cache/whisper.cpp/` or set `WHISPER_MODEL`.
+- You can run the tools without installing: `python3 tools/<file>.py`. The files are `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py` and `check_note.py` (`check`); `setup` and `doctor` need the installed `lnb`.
 
 ### Commands
 
@@ -255,6 +255,7 @@ lnb doctor   # checks ffmpeg, whisper-cli, pdftotext and the whisper model, and 
 | `lnb frames` | Picks board and slide frames just **before** each large change, such as a full board before erasing. `--scores` helps tune the threshold for each course. |
 | `lnb pages` | Turns textbook or handout text (MinerU JSON or a PDF with a text layer) into page-marked md for quote checking. |
 | `lnb check` | Checks finished notes: video quotes against the captions at the stated time, textbook quotes against the cited page, and embedded calculations. Each repository configures it with `check_note.json`. |
+| `lnb setup` | Prepares transcription: prints install commands for whisper-cli and ffmpeg, and downloads the whisper model after asking, verified by SHA256. |
 | `lnb doctor` | Reports missing external programs and models. |
 
 **Textbooks and slides**: convert them to md with existing tools, [MinerU](https://github.com/opendatalab/MinerU) for PDFs (`-b pipeline` is about 6× faster) or [MarkItDown](https://github.com/microsoft/markitdown) for Office files. For quote checking, run `lnb pages` on MinerU's `*_content_list.json` or on a PDF with a text layer, and register the result under `books` in `check_note.json`. MarkItDown output has no page numbers, so `lnb pages` cannot use it. Do not trust conversions blindly: compare transcribed formulas with the page image. Converted textbooks are copyrighted, so keep them out of public repositories.

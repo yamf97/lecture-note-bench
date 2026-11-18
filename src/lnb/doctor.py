@@ -10,9 +10,6 @@ import sys
 
 from .transcribe import find_model
 
-MODEL_URL = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
-MODEL_GET = ('mkdir -p ~/.cache/whisper.cpp && curl -L -o ~/.cache/whisper.cpp/ggml-large-v3-turbo-q5_0.bin '
-             + MODEL_URL + "   # 약 574MB")
 
 # (이름, 찾는 법, 쓰는 하위 명령, macOS 설치, 그 밖)
 PROGRAMS = [
@@ -53,7 +50,7 @@ def main(argv=None, prog=None):
     else:
         missing += 1
         print(f"없음  {'whisper 모델':<21} → transcribe 가 안 된다 (자막 있는 강의만 쓰면 필요 없다)\n"
-              f"      내려받기: {MODEL_GET}\n"
+              f"      받기: lnb setup   (약 574MB, 받은 뒤 SHA256 확인)\n"
               f"      다른 곳에 두었으면: export WHISPER_MODEL=<ggml-*.bin 경로>")
     print("\n모두 있다." if not missing else f"\n빠진 것 {missing}개 — 위 안내대로 깔면 된다.")
     return 1 if missing else 0

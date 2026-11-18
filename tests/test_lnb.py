@@ -21,7 +21,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-from lnb import check_note, cli, fetch, vtt_text  # noqa: E402
+from lnb import check_note, cli, fetch, setup_env, vtt_text  # noqa: E402
+import hashlib  # noqa: E402
+import pathlib  # noqa: E402
 
 
 def fake_bin(folder, name, body):
@@ -343,7 +345,7 @@ class Cli(unittest.TestCase):
     def test_help_lists_all_commands(self):
         code, out = quiet(cli.main, ["--help"])
         self.assertEqual(code, 0)
-        for name in ("fetch", "transcribe", "text", "frames", "check", "doctor"):
+        for name in ("fetch", "transcribe", "text", "frames", "check", "setup", "doctor"):
             self.assertIn(f"  {name} ", out)
 
     def test_usage_errors(self):
@@ -369,6 +371,79 @@ class Cli(unittest.TestCase):
         code, out = quiet(cli.main, ["text", "--help"])
         self.assertEqual(code, 0)
         self.assertIn("usage: lnb text", out)
+
+
+class Setup(unittest.TestCase):
+    """lnb setup — 실제 574MB 대신 작은 가짜 모델을 file:// 로 받는다."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.src = os.path.join(self.tmp, "src.bin")
+        with open(self.src, "wb") as f:
+            f.write(b"fake model " * 1000)
+        self.sha = hashlib.sha256(open(self.src, "rb").read()).hexdigest()
+        self.size = os.path.getsize(self.src)
+        self.url = pathlib.Path(self.src).as_uri()
+        self.dir = os.path.join(self.tmp, "models")
+        self.dest = os.path.join(self.dir, "m.bin")
+        os.environ.pop("WHISPER_MODEL", None)
+
+    def run_ensure(self, yes=True, reply="y", sha=None, size=None):
+        out = io.StringIO()
+        ok = setup_env.ensure_model(self.dir, yes, ask=lambda _: reply, out=out, url=self.url,
+                                    sha256=sha or self.sha, size=size or self.size, name="m.bin")
+        return ok, out.getvalue()
+
+    def test_download_with_matching_hash(self):
+        ok, out = self.run_ensure()
+        self.assertTrue(ok, out)
+        self.assertEqual(open(self.dest, "rb").read(), open(self.src, "rb").read())
+        self.assertFalse(os.path.exists(self.dest + ".part"))
+
+    def test_wrong_hash_leaves_nothing(self):
+        ok, out = self.run_ensure(sha="0" * 64)
+        self.assertFalse(ok)
+        self.assertIn("다르다", out)
+        self.assertEqual(os.listdir(self.dir), [])
+
+    def test_wrong_size_leaves_nothing(self):
+        ok, _ = self.run_ensure(size=self.size + 1)
+        self.assertFalse(ok)
+        self.assertEqual(os.listdir(self.dir), [])
+
+    def test_declined_downloads_nothing(self):
+        ok, out = self.run_ensure(yes=False, reply="n")
+        self.assertFalse(ok)
+        self.assertFalse(os.path.exists(self.dest))
+
+    def test_existing_good_model_is_kept(self):
+        self.assertTrue(self.run_ensure()[0])
+        os.remove(self.src)  # 다시 받으려 하면 실패한다
+        ok, out = self.run_ensure()
+        self.assertTrue(ok)
+        self.assertIn("SHA256 일치", out)
+
+    def test_existing_other_model_is_not_overwritten(self):
+        os.makedirs(self.dir)
+        with open(self.dest, "wb") as f:
+            f.write(b"someone else's model")
+        ok, out = self.run_ensure()
+        self.assertFalse(ok)
+        self.assertIn("덮어쓰지 않았다", out)
+        self.assertEqual(open(self.dest, "rb").read(), b"someone else's model")
+
+    def test_broken_link_is_reported(self):
+        os.makedirs(self.dir)
+        os.symlink(os.path.join(self.tmp, "gone.bin"), self.dest)
+        ok, out = self.run_ensure()
+        self.assertFalse(ok)
+        self.assertIn("끊어진 링크", out)
+
+    def test_pinned_url_names_commit_and_file(self):
+        self.assertIn("/resolve/" + setup_env.MODEL_COMMIT + "/", setup_env.MODEL_URL)
+        self.assertTrue(setup_env.MODEL_URL.endswith(setup_env.MODEL_NAME))
+        self.assertRegex(setup_env.MODEL_SHA256, r"^[0-9a-f]{64}$")
 
 
 if __name__ == "__main__":
