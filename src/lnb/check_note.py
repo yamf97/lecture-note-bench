@@ -29,8 +29,9 @@
 번역이 맞는가, 설명이 개념적으로 옳은가. 그것은 커밋 후 모델 검토와 사용자의 몫이다.
 
 설정 파일 check_note.json — 노트가 있는 폴더에서 위로(git 저장소 뿌리까지), 없으면 현재 폴더에서
-찾는다. --config 로 직접 줄 수도 있다. 없으면 이 저장소의 lectures/ 만 쓴다. 경로의 ~ 와 상대 경로
-(설정 파일 기준)를 읽는다.
+찾는다. --config 로 직접 줄 수도 있다. 없으면 저장소 안에서 부를 때(tools/check_note.py)만 이 저장소의
+lectures/ 를 쓴다 — 설치한 lnb 는 저장소 밖에 있으므로 설정 파일이 있어야 한다(이 저장소는 뿌리의
+check_note.json). 경로의 ~ 와 상대 경로(설정 파일 기준)를 읽는다.
 
     {
       "lectures": {"Vision": "lectures/Strang_2020_vision_LA",
@@ -506,7 +507,7 @@ def check_explain(ex, text, n, fails, course=None):
 
 
 def main(argv=None, prog=None):
-    ap = argparse.ArgumentParser(prog=prog, add_help=True)
+    ap = argparse.ArgumentParser(prog=prog, description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("notes", nargs="*")
     ap.add_argument("--all", nargs="?", const="", default=None)
     ap.add_argument("--config")

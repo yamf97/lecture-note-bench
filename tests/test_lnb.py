@@ -230,6 +230,21 @@ class Cli(unittest.TestCase):
         self.assertEqual(quiet(cli.main, [])[0], 2)
         self.assertEqual(quiet(cli.main, ["bogus"])[0], 2)
 
+    def test_check_help_shows_config_schema(self):
+        code, out = quiet(cli.main, ["check", "--help"])
+        self.assertEqual(code, 0)
+        self.assertIn("check_note.json", out)
+        self.assertIn('"lectures"', out)
+
+    def test_installed_lnb_finds_repo_lectures_via_config(self):
+        # 설치본처럼 저장소 기준 lectures/ 를 못 쓰게 막고(LECTURES_DIR=없는 곳), 저장소 뿌리에서 lnb check 를 부른다
+        env = dict(os.environ, LECTURES_DIR=os.path.join(ROOT, "no-such-dir"),
+                   PYTHONPATH=os.path.join(ROOT, "src"))
+        r = subprocess.run([sys.executable, "-m", "lnb", "check", "experiments/results/E.md"],
+                           cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertRegex(r.stdout, r"ok .*E\.md — 인용 [1-9]")
+
     def test_subcommand_gets_prog_name(self):
         code, out = quiet(cli.main, ["text", "--help"])
         self.assertEqual(code, 0)
