@@ -42,6 +42,16 @@ lnb setup       # 음성인식 모델(약 574MB)을 받을지 묻고, 받은 파
 - 바깥 프로그램(ffmpeg·whisper-cli·pdftotext)은 따로 설치합니다. macOS: `brew install ffmpeg whisper-cpp poppler`
 - 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`
 
+### 받아쓰기에 쓰는 프로그램 — Whisper
+
+- **무엇인가:** 말소리를 글자로 바꾸는 음성인식 모델입니다. OpenAI가 만들어 공개했고, 한국어·영어를 포함한 여러 언어를 받아씁니다
+- **공개 형식:** 코드와 모델 모두 MIT 라이선스입니다. 누구나 무료로 내려받아 쓰고 고칠 수 있습니다
+- **whisper-cli:** 원래 Whisper는 Python으로 실행합니다. lnb는 ggml-org가 이를 C/C++로 다시 만든 [whisper.cpp](https://github.com/ggml-org/whisper.cpp)(MIT)를 씁니다. Python 환경 없이 `brew install whisper-cpp` 한 줄로 설치되고, 맥에서 가볍게 실행됩니다. whisper-cli는 그 안에 든 명령 이름입니다
+- **왜 필요한가:** YouTube 강의는 자막을 받으면 되지만, 가지고 있는 녹음·영상 파일에는 자막이 없습니다. 노트에 옮긴 말이 강의에 정말 있는지 확인하려면 시각이 붙은 대본이 필요해서, 그 대본을 만드는 데 씁니다
+- **어디서 실행되나:** 이 컴퓨터 안에서만 실행되고 음성은 밖으로 나가지 않습니다. 인터넷은 모델을 처음 받을 때만 씁니다
+- **`lnb setup`이 받는 모델:** OpenAI의 large-v3-turbo를 whisper.cpp용으로 바꾸고 크기를 줄인 파일(`ggml-large-v3-turbo-q5_0.bin`, 약 574MB)입니다. 정확도는 조금 낮아지지만 맥에서 쓰기에 알맞습니다
+- **쓰는 법:** 파일 하나는 `lnb transcribe 강의.mp4 -l ko`, 폴더 통째는 `lnb transcribe ~/강의 -o ~/강의자막 -l ko`. 자세한 것은 아래 「가지고 있는 녹음·영상 받아쓰기」
+
 ## 빠른 시작 — 강의 한 편
 
 ```bash
@@ -221,6 +231,7 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 - 도구 코드(`src/lnb/`·`tools/`)와 스킬(`skills/`)은 MIT License입니다
 - `lnb frames`의 장면 고르기는 [claude-video](https://github.com/bradautomates/claude-video)(Bradley Bonanno, MIT)의 방식(ffmpeg 장면 점수 + 썸네일 비교)을 참고해, 판서 강의에 맞게 「바뀌기 직전」 장면을 고르도록 바꿨습니다
 - 교재(*Introduction to Linear Algebra*)는 절 제목만 참고했고 본문은 싣지 않았습니다
+- 받아쓰기: [Whisper](https://github.com/openai/whisper)(OpenAI, MIT)와 [whisper.cpp](https://github.com/ggml-org/whisper.cpp)(ggml-org, MIT). lnb는 이 프로그램을 설치하지 않고 불러 쓰기만 하며, 모델 파일은 `lnb setup`이 Hugging Face의 `ggerganov/whisper.cpp`에서 받습니다
 - 함께 쓰는 도구의 라이선스: MarkItDown은 MIT입니다. MinerU는 버전마다 다릅니다(3.4.5는 「MinerU Open Source License」 — Apache 2.0에 상업 이용 조건 등이 더해짐). 설치한 버전의 LICENSE를 확인하세요. 모델 가중치에는 따로 조건이 붙을 수 있습니다
 
 ---
@@ -255,6 +266,7 @@ lnb setup    # only for transcription: downloads the speech model (about 574 MB)
 - Requires Python 3.9+. **Built and tested on macOS only.**
 - External programs are installed separately. macOS: `brew install ffmpeg whisper-cpp poppler`
 - To pin a version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`
+- **About Whisper (transcription):** Whisper is OpenAI's speech-recognition model, released with its code under MIT. lnb runs it through [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (ggml-org, MIT), a C/C++ reimplementation installed with `brew install whisper-cpp` that needs no Python environment; `whisper-cli` is its command. It is used to make timestamped transcripts for recordings that have no captions, so quotes in a note can be checked. It runs on this computer only; nothing is uploaded. `lnb setup` downloads `ggml-large-v3-turbo-q5_0.bin` (about 574 MB), a size-reduced build of large-v3-turbo.
 
 ### Quick start: one lecture
 
@@ -306,3 +318,4 @@ Five open models received the same instructions for a note on Gilbert Strang's *
 
 - Lecture content and `experiments/`: CC BY-NC-SA 4.0 (MIT OpenCourseWare RES.18-010).
 - Tool code (`src/lnb/`, `tools/`) and skills (`skills/`): MIT. Frame selection in `lnb frames` was adapted from [claude-video](https://github.com/bradautomates/claude-video) (MIT).
+- Transcription uses [Whisper](https://github.com/openai/whisper) (OpenAI, MIT) via [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (ggml-org, MIT). lnb calls them but does not install them.
