@@ -21,7 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 
-from lnb import check_note, cli, fetch, setup_env, vtt_text  # noqa: E402
+from lnb import check_note, cli, fetch, setup_env, transcribe, vtt_text  # noqa: E402
 import hashlib  # noqa: E402
 import pathlib  # noqa: E402
 
@@ -467,3 +467,98 @@ class Setup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+WHISPER_OK = """of=""
+while [ $# -gt 0 ]; do [ "$1" = "-of" ] && of="$2"; shift; done
+printf '1\\n00:00:00,000 --> 00:00:05,000\\nhello\\n\\n' > "$of.srt\""""
+WHISPER_FAIL = """of=""
+while [ $# -gt 0 ]; do [ "$1" = "-of" ] && of="$2"; shift; done
+printf 'half' > "$of.srt"; echo 'boom' >&2; exit 1"""
+
+
+class Transcribe(unittest.TestCase):
+    """lnb transcribe — ffmpeg·ffprobe·whisper-cli 는 가짜 셸 스크립트."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.bin = os.path.join(self.tmp, "bin")
+        os.mkdir(self.bin)
+        old = os.environ["PATH"]
+        os.environ["PATH"] = self.bin + os.pathsep + old
+        self.addCleanup(os.environ.__setitem__, "PATH", old)
+        fake_bin(self.bin, "ffmpeg", 'for a; do last="$a"; done; : > "$last"')
+        fake_bin(self.bin, "ffprobe", "echo 5.0")
+        fake_bin(self.bin, "whisper-cli", WHISPER_OK)
+        self.model = os.path.join(self.tmp, "ggml-tiny.bin")
+        open(self.model, "w").close()
+        self.lec = os.path.join(self.tmp, "강의")
+        for rel in ("물리/1강.mp4", "화학/1강.mp4", "화학/메모.txt", ".숨김/2강.mp4"):
+            path = os.path.join(self.lec, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "w").close()
+        self.out = os.path.join(self.tmp, "자막")
+
+    def run_tr(self, *args, model=None):
+        return quiet(transcribe.main, [*args, "-m", model or self.model])
+
+    def srts(self):
+        found = []
+        for root, _, files in os.walk(self.out):
+            found += [os.path.relpath(os.path.join(root, f), self.out) for f in files]
+        return sorted(found)
+
+    def test_folder_mirrors_tree_with_model_name(self):
+        code, out = self.run_tr(self.lec, "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.srts(), ["물리/1강 (whisper tiny).srt", "화학/1강 (whisper tiny).srt"])
+        self.assertEqual(os.listdir(os.path.join(self.lec, "물리")), ["1강.mp4"])  # 원본 폴더는 그대로
+
+    def test_rerun_skips_existing(self):
+        self.run_tr(self.lec, "-o", self.out)
+        fake_bin(self.bin, "whisper-cli", "exit 1")  # 다시 받아쓰면 실패한다
+        code, out = self.run_tr(self.lec, "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertIn("받아쓸 것 0개", out)
+        self.assertIn("이미 있음 2개", out)
+
+    def test_other_model_adds_file_and_keeps_old(self):
+        self.run_tr(self.lec, "-o", self.out)
+        other = os.path.join(self.tmp, "ggml-large-v9.bin")
+        open(other, "w").close()
+        code, out = self.run_tr(self.lec, "-o", self.out, model=other)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.srts(), ["물리/1강 (whisper large-v9).srt", "물리/1강 (whisper tiny).srt",
+                                       "화학/1강 (whisper large-v9).srt", "화학/1강 (whisper tiny).srt"])
+
+    def test_failure_leaves_no_partial_and_lists_it(self):
+        fake_bin(self.bin, "whisper-cli", WHISPER_FAIL)
+        code, out = self.run_tr(self.lec, "-o", self.out)
+        self.assertEqual(code, 1)
+        self.assertEqual(self.srts(), ["failed.txt"])
+        with open(os.path.join(self.out, "failed.txt"), encoding="utf-8") as f:
+            lines = f.read().splitlines()
+        self.assertEqual(len(lines), 2)
+        self.assertIn("boom", lines[0])
+
+    def test_success_removes_stale_failed_list(self):
+        os.makedirs(self.out)
+        with open(os.path.join(self.out, "failed.txt"), "w") as f:
+            f.write("old\n")
+        code, out = self.run_tr(self.lec, "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("failed.txt", self.srts())
+
+    def test_single_file_without_outdir_goes_next_to_it(self):
+        src = os.path.join(self.lec, "물리", "1강.mp4")
+        code, out = self.run_tr(src)
+        self.assertEqual(code, 0, out)
+        self.assertTrue(os.path.exists(os.path.join(self.lec, "물리", "1강 (whisper tiny).srt")))
+
+    def test_short_existing_srt_warns(self):
+        fake_bin(self.bin, "ffprobe", "echo 60.0")  # 음성 60초, 자막은 5초에서 끝난다
+        self.run_tr(self.lec, "-o", self.out)
+        code, out = self.run_tr(self.lec, "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertIn("일찍 끝난다", out)

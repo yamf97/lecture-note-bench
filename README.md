@@ -76,7 +76,7 @@ lnb check 노트.md
 | 명령 | 하는 일 |
 |---|---|
 | `lnb fetch` | 영상 사이트에서 강의 자막을 받습니다. 필요하면 영상·음성도. **먼저 아래 「자료를 받을 때」를 읽어 주세요** |
-| `lnb transcribe` | 자막이 없는 음성·영상을 이 컴퓨터에서 받아써 자막(`.srt`)을 만듭니다. 파일을 밖으로 보내지 않습니다 |
+| `lnb transcribe` | 자막이 없는 음성·영상을 이 컴퓨터에서 받아써 자막(`.srt`)을 만듭니다. 파일을 밖으로 보내지 않습니다. 폴더를 통째로 줄 수도 있습니다 |
 | `lnb text` | 자막을 30초마다 `[mm:ss]` 시각이 붙은 읽기 좋은 본문으로 바꿉니다. `--cues`는 자막 줄마다 정확한 시각 |
 | `lnb frames` | 영상에서 판서·슬라이드 장면을 뽑습니다. 칠판을 지우기 직전처럼 화면이 크게 바뀌기 직전을 고릅니다 |
 | `lnb pages` | 교재·강의록을 쪽 번호가 표시된 글로 만듭니다. 교재 인용 검사에 씁니다 |
@@ -150,6 +150,17 @@ lnb pages 강의록.pdf --first 1 --last 30 -o 강의자료/강의록.md
 - 재생목록을 한꺼번에 받으려면 강좌 폴더에 `fetch.json`을 둡니다. 형식은 `lnb fetch --help`
 
 `text`·`transcribe`·`frames`·`check`는 이미 가진 파일만 다룹니다.
+
+## 가지고 있는 녹음·영상 받아쓰기
+
+```bash
+lnb transcribe ~/강의 -o ~/강의자막 -l ko
+```
+
+- `~/강의` 안의 음성·영상을 하위 폴더까지 찾아 받아쓰고, `~/강의자막` 아래에 같은 폴더 구조로 자막을 만듭니다. 원래 폴더는 건드리지 않습니다. `-o`를 빼면 강의 파일 바로 옆에 만듭니다
+- 자막 이름에 모델 이름이 들어갑니다. 예: `1강 (whisper large-v3-turbo-q5_0).srt`
+- 도중에 멈춰도 같은 명령을 다시 치면 끝난 것은 건너뛰고 이어서 합니다. 다른 모델로 다시 하면 새 자막이 따로 생기고 예전 자막은 남습니다
+- 실패한 파일은 끝에 모아 보여 주고 `~/강의자막/failed.txt`에도 적습니다
 
 ## 알아 둘 점
 
@@ -262,7 +273,7 @@ lnb check note.md                                                            # c
 | Command | What it does |
 |---|---|
 | `lnb fetch` | Downloads captions, plus video or audio if needed. **Read "Downloading responsibly" first.** |
-| `lnb transcribe` | Transcribes audio or video on this machine when a lecture has no captions. Nothing is uploaded. |
+| `lnb transcribe` | Transcribes audio or video on this machine when a lecture has no captions. Nothing is uploaded. Accepts a whole folder: `lnb transcribe ~/lectures -o ~/captions` mirrors its subfolders, names each file after the model, and resumes where it stopped. |
 | `lnb text` | Turns captions into readable text with a `[mm:ss]` time every 30 seconds; `--cues` gives exact times. |
 | `lnb frames` | Picks board and slide frames just before each large change, such as a full board before erasing. |
 | `lnb pages` | Turns a textbook or handout into text marked with page numbers, for quote checking. |

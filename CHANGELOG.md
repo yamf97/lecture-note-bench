@@ -8,6 +8,30 @@
 
 특정 버전 설치 · Install a specific version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`
 
+## Unreleased
+
+### 한국어
+
+**추가**
+- `lnb transcribe`가 폴더를 받습니다. 하위 폴더까지 음성·영상을 찾고, `-o`를 주면 그 아래에 같은 폴더 구조로 자막을 만듭니다. 원래 폴더는 건드리지 않습니다.
+- 진행 상황(몇 번째인지, 남은 시간 어림)을 보여 주고, 실패한 파일을 끝에 모아 보여 주며 `-o`가 있으면 `failed.txt`에 적습니다.
+
+**바뀜**
+- 자막 이름에 모델 이름이 들어갑니다: `<이름> (whisper <모델>).srt`. 같은 모델의 자막이 있으면 건너뛰어 끊긴 곳부터 이어서 하고, 모델을 바꾸면 새 자막을 따로 만들고 예전 것은 남깁니다.
+- 자막은 다 만든 뒤에야 제 이름이 됩니다. 도중에 끊겨 반쪽 자막이 남지 않습니다.
+- 이미 있는 자막도 끝 시각이 음성보다 10초 넘게 짧으면 경고합니다.
+
+### English
+
+**Added**
+- `lnb transcribe` accepts folders. It finds audio and video in subfolders, and with `-o` it writes captions under that folder in the same structure. The source folder is left untouched.
+- Progress (item count and estimated time left), a list of failed files at the end, and `failed.txt` under `-o`.
+
+**Changed**
+- Caption names include the model: `<name> (whisper <model>).srt`. An existing caption from the same model is skipped, so a rerun resumes; a different model writes a new caption and keeps the old one.
+- A caption gets its final name only when complete, so an interrupted run leaves no half-written caption.
+- Existing captions are also warned about when they end more than 10 seconds before the audio.
+
 ## 0.3.0 — 2026-11-18
 
 ### 한국어

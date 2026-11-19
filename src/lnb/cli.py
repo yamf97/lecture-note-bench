@@ -10,7 +10,7 @@ COMMANDS = [
      "재생목록·영상 주소 → 강좌 폴더의 자막·index.tsv",
      "lnb fetch --url <영상 주소> -o 강좌폴더 --video"),
     ("transcribe", "transcribe", "자막이 없는 강의를 이 컴퓨터에서 받아쓸 때 (whisper.cpp)",
-     "음성·영상 파일 → <이름> (whisper).srt",
+     "음성·영상 파일·폴더 → <이름> (whisper <모델>).srt",
      "lnb transcribe 강의.m4a -l ko"),
     ("text", "vtt_text", "자막을 읽기 좋은 본문으로 펼칠 때",
      "자막(.vtt·.srt) → 30초 칸 [mm:ss] 문단 (--cues 면 큐마다 한 줄)",

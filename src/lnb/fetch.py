@@ -21,7 +21,7 @@
   4. 한 번에 받을 수를 --max 로 제한. 다시 돌리면 raw 가 없는 강의부터 이어받는다
   판정은 종료코드가 아니라 **내용**으로 한다 — youtube_transcript_api 는 실패해도 0 을 낸다
 
-자막이 없을 때: --transcribe-missing 이면 음성만 받아 lnb transcribe(로컬 whisper)로 raw/<이름> (whisper).srt.
+자막이 없을 때: --transcribe-missing 이면 음성만 받아 lnb transcribe(로컬 whisper)로 raw/<이름> (whisper <모델>).srt.
 --video 면 video/<이름>.mp4 (720p 이하)도 받는다 — lnb frames 로 판서 장면을 뽑을 때.
 결과 파일은 lnb text · lnb check 가 그대로 읽는다.
 
