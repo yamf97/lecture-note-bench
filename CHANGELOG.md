@@ -6,9 +6,9 @@
 
 **Versioning**: `MAJOR.MINOR.PATCH`. While the major version is 0, a minor bump (0.1 → 0.2) means new features or changed check results, and a patch bump (0.2.0 → 0.2.1) means bug fixes only. Documentation-only changes do not bump the version.
 
-특정 버전 설치 · Install a specific version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.3.0`
+특정 버전 설치 · Install a specific version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.4.0`
 
-## Unreleased
+## 0.4.0 — 2026-11-19
 
 ### 한국어
 
@@ -20,6 +20,11 @@
 - 자막 이름에 모델 이름이 들어갑니다: `<이름> (whisper <모델>).srt`. 같은 모델의 자막이 있으면 건너뛰어 끊긴 곳부터 이어서 하고, 모델을 바꾸면 새 자막을 따로 만들고 예전 것은 남깁니다.
 - 자막은 다 만든 뒤에야 제 이름이 됩니다. 도중에 끊겨 반쪽 자막이 남지 않습니다.
 - 이미 있는 자막도 끝 시각이 음성보다 10초 넘게 짧으면 경고합니다.
+- 같은 폴더에 `1강.mp4`와 `1강.m4a`처럼 이름만 같은 파일이 있으면 자막 이름에 확장자까지 넣어 서로 덮어쓰지 않습니다. 그래도 겹치면 시작 전에 멈추고 이름을 바꿀 파일을 알려 줍니다.
+- 0.3.0까지 만든 `<이름> (whisper).srt`는 "이미 있음"으로 보지 않습니다. 그 강의를 `lnb transcribe`로 다시 돌리면 새 이름으로 다시 받아씁니다.
+
+**문서**
+- README에 Whisper·whisper.cpp가 무엇인지, 누가 만들었고 어떤 라이선스인지, 왜 쓰는지를 적었습니다. `docs/roadmap.md`에 앞으로 할 일을 적었습니다.
 
 ### English
 
@@ -31,6 +36,11 @@
 - Caption names include the model: `<name> (whisper <model>).srt`. An existing caption from the same model is skipped, so a rerun resumes; a different model writes a new caption and keeps the old one.
 - A caption gets its final name only when complete, so an interrupted run leaves no half-written caption.
 - Existing captions are also warned about when they end more than 10 seconds before the audio.
+- Files that differ only by extension in one folder (`1.mp4`, `1.m4a`) get the extension in the caption name, so neither overwrites the other. If names still clash, the run stops before starting and names the files to rename.
+- Captions named `<name> (whisper).srt` from 0.3.0 and earlier are not treated as done; running `lnb transcribe` on those lectures again transcribes them under the new name.
+
+**Docs**
+- README explains what Whisper and whisper.cpp are, who makes them, their licenses, and why lnb uses them. `docs/roadmap.md` lists planned work.
 
 ## 0.3.0 — 2026-11-18
 
