@@ -6,9 +6,9 @@
 
 **Versioning**: `MAJOR.MINOR.PATCH`. While the major version is 0, a minor bump (0.1 → 0.2) means new features or changed check results, and a patch bump (0.2.0 → 0.2.1) means bug fixes only. Documentation-only changes do not bump the version.
 
-특정 버전 설치 · Install a specific version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.4.0`
+특정 버전 설치 · Install a specific version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.5.0`
 
-## Unreleased
+## 0.5.0 — 2026-11-19
 
 ### 한국어
 

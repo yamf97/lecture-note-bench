@@ -2,11 +2,11 @@
 
 [English](#english)
 
-> **0.4.0 버전이 나왔습니다** (2026-11-19)
+> **0.5.0 버전이 나왔습니다** (2026-11-19)
 >
 > 좋아진 점
-> - **0.4.0**: 강의 폴더를 통째로 받아씁니다. `lnb transcribe ~/강의 -o ~/강의자막`처럼 쓰면 하위 폴더 구조 그대로 자막을 만들고, 도중에 끊겨도 같은 명령으로 이어서 합니다.
-> - 0.3.0: 녹음·영상을 글로 받아쓰는(전사) 준비를 명령 하나 `lnb setup`으로 합니다. 음성인식 모델을 받아 파일이 깨지거나 바뀌지 않았는지까지 확인합니다.
+> - **0.5.0**: 받아쓰기가 더 정확해졌습니다. 말소리가 있는 구간만 받아써서(VAD), 조용한 구간에 "아 아 아 …" 같은 엉뚱한 글이 줄고 더 빨리 끝납니다. 기존 사용자는 `lnb setup`을 한 번 더 실행해 VAD 모델(약 0.9MB)을 받으세요.
+> - 0.4.0: 강의 폴더를 통째로 받아씁니다. `lnb transcribe ~/강의 -o ~/강의자막`처럼 쓰면 하위 폴더 구조 그대로 자막을 만들고, 도중에 끊겨도 같은 명령으로 이어서 합니다.
 >
 > 업데이트: `pipx upgrade lecture-note-bench` · 버전별 바뀐 점 전체: [CHANGELOG.md](CHANGELOG.md)
 
@@ -40,7 +40,7 @@ lnb setup       # 음성인식 모델(약 574MB)을 받을지 묻고, 받은 파
 - 명령은 `lnb`, 패키지 이름은 `lecture-note-bench`입니다. Python 3.9 이상이 필요합니다
 - **macOS에서만 만들고 시험했습니다.** 리눅스·윈도우에서는 아직 확인하지 않았습니다
 - 바깥 프로그램(ffmpeg·whisper-cli·pdftotext)은 따로 설치합니다. macOS: `brew install ffmpeg whisper-cpp poppler`
-- 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.4.0`
+- 특정 버전 설치: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.5.0`
 
 ### 받아쓰기에 쓰는 프로그램 — Whisper
 
@@ -240,11 +240,11 @@ python3 tools/run_gateway.py --base-url https://openrouter.ai/api/v1 \
 
 ## English
 
-> **Version 0.4.0 is out** (2026-11-19)
+> **Version 0.5.0 is out** (2026-11-19)
 >
 > What got better:
-> - **0.4.0**: transcribe a whole folder of lectures. `lnb transcribe ~/lectures -o ~/captions` keeps the subfolder structure, and rerunning the same command resumes after an interruption.
-> - 0.3.0: one command, `lnb setup`, prepares transcription (turning a recording into text). It downloads the speech-recognition model and checks that the file is intact and unaltered.
+> - **0.5.0**: more accurate transcription. Only speech is transcribed (VAD), so quiet stretches turn into made-up text like "ah ah ah …" less often, and runs finish sooner. Existing users: run `lnb setup` once more to get the VAD model (about 0.9 MB).
+> - 0.4.0: transcribe a whole folder of lectures. `lnb transcribe ~/lectures -o ~/captions` keeps the subfolder structure, and rerunning the same command resumes after an interruption.
 >
 > Update with `pipx upgrade lecture-note-bench`. All changes by version: [CHANGELOG.md](CHANGELOG.md)
 
@@ -267,7 +267,7 @@ lnb setup    # only for transcription: downloads the speech model (about 574 MB)
 
 - Requires Python 3.9+. **Built and tested on macOS only.**
 - External programs are installed separately. macOS: `brew install ffmpeg whisper-cpp poppler`
-- To pin a version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.4.0`
+- To pin a version: `pipx install --force git+https://github.com/yamf97/lecture-note-bench@v0.5.0`
 - **About Whisper (transcription):** Whisper is OpenAI's speech-recognition model, released with its code under MIT. lnb runs it through [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (ggml-org, MIT), a C/C++ reimplementation installed with `brew install whisper-cpp` that needs no Python environment; `whisper-cli` is its command. It is used to make timestamped transcripts for recordings that have no captions, so quotes in a note can be checked. It runs on this computer only; nothing is uploaded. `lnb setup` downloads `ggml-large-v3-turbo-q5_0.bin` (about 574 MB), a size-reduced build of large-v3-turbo, and the Silero VAD model (about 0.9 MB). VAD is on by default: only speech is transcribed, which stops whisper from inventing text ("ah ah ah …") in quiet stretches. Turn it off with `--no-vad`.
 
 ### Quick start: one lecture
