@@ -10,7 +10,7 @@ allowed-tools: Bash Read Write Edit
 **명령을 새로 조립하거나 같은 일을 하는 스크립트를 새로 만들지 않는다.** 모자라는 기능은 그 도구에 옵션으로 넓힌다.
 
 - 설치: `pipx install git+https://github.com/yamf97/lecture-note-bench` (`command -v lnb`로 확인)
-- `lnb`가 없으면 먼저 위 명령으로 설치한다(또는 아래 `tools/` 대안). 설치했는데 하위 명령이 안 되면 `lnb doctor` — 빠진 프로그램(ffmpeg·whisper-cli·pdftotext)·whisper 모델과 설치법을 알려 준다. 받아쓰기용 whisper 모델이 없으면 `lnb setup`(묻고 받아 SHA256 확인 — 사용자에게 574MB 받기를 확인받고 실행)
+- `lnb`가 없으면 먼저 위 명령으로 설치한다(또는 아래 `tools/` 대안). 설치했는데 하위 명령이 안 되면 `lnb doctor` — 빠진 프로그램(ffmpeg·whisper-cli·pdftotext)·whisper 모델과 설치법을 알려 준다. 받아쓰기용 whisper 모델·VAD 모델이 없으면 `lnb setup`(묻고 받아 SHA256 확인 — 사용자에게 574MB 받기를 확인받고 실행)
 - 각 명령의 옵션·설정 형식은 `lnb <명령> --help`
 
 **`lnb`를 설치하지 않았으면** 저장소의 `tools/`로 같은 일을 한다 — 아래 `lnb <명령>`을 `python3 $T/<파일>`로 바꿔 부른다
@@ -44,7 +44,7 @@ lnb fetch <자료 폴더> --max 10                                             #
 ```
 - 재생목록은 자료 폴더에 `fetch.json`을 먼저 만든다 (형식은 `lnb fetch --help`)
 - **종료코드 2 = 차단** — 그대로 멈추고 사용자에게 보고한다. 재시도하거나 우회하지 않는다
-- 자막이 없어 전사했으면 `… (whisper <모델>).srt`(예전 판은 `… (whisper).srt`) — 자동 전사라 숫자·용어 오인식이 있다 (노트에서 정정은 따로 표시)
+- 자막이 없어 전사했으면 `… (whisper <모델> vad).srt`(예전 판은 `… (whisper <모델>).srt`·`… (whisper).srt`) — 자동 전사라 숫자·용어 오인식이 있다 (노트에서 정정은 따로 표시)
 
 ## ② 읽기본 — `lnb text`
 

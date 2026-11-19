@@ -6,7 +6,9 @@
     lnb transcribe 강의.mp3 -m ~/models/ggml-large-v3-turbo-q5_0.bin
     (설치하지 않았으면 저장소에서 `lnb transcribe` 대신 `python3 tools/transcribe.py`)
 
-결과: <이름> (whisper <모델>).srt   예: 1강 (whisper large-v3-turbo-q5_0).srt
+결과: <이름> (whisper <모델> vad).srt   예: 1강 (whisper large-v3-turbo-q5_0 vad).srt
+  - VAD(말소리 구간 찾기, Silero)를 기본으로 켠다. 조용한 구간에서 whisper 가 "아 아 아 …"
+    같은 말을 지어내거나 30초씩 뭉치는 일을 막는다. 끄려면 --no-vad (이름에서 vad 가 빠진다).
   - -o 가 없으면 강의 파일 옆에, 있으면 -o 아래에 만든다. 폴더를 주면 그 안의 하위 폴더
     구조를 -o 아래에 그대로 만든다 (물리/1강.mp4 → <-o>/물리/1강 (whisper …).srt).
   - 같은 폴더에 1강.mp4 와 1강.m4a 처럼 이름만 같은 파일이 있으면 「1강.mp4 (whisper …).srt」처럼
@@ -41,6 +43,7 @@ MODEL_DIRS = [
     "~/models/whisper",
 ]
 PREFERRED = ["ggml-large-v3-turbo-q5_0.bin", "ggml-large-v3-turbo.bin", "ggml-large-v3.bin"]
+VAD_PREFERRED = ["ggml-silero-v6.2.0.bin", "ggml-silero-v5.1.2.bin"]
 MEDIA = {".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg", ".opus",
          ".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi"}
 SHORT = 10  # 자막 끝이 음성보다 이만큼(초) 넘게 짧으면 경고
@@ -53,12 +56,29 @@ def find_model(given):
         return os.path.expanduser(os.environ["WHISPER_MODEL"])
     found = []
     for d in MODEL_DIRS:
-        found += glob.glob(os.path.join(os.path.expanduser(d), "ggml-*.bin"))
+        found += [f for f in glob.glob(os.path.join(os.path.expanduser(d), "ggml-*.bin"))
+                  if not os.path.basename(f).startswith("ggml-silero")]
     for name in PREFERRED:
         for f in found:
             if os.path.basename(f) == name:
                 return f
     return found[0] if found else None
+
+
+def find_vad(given):
+    """VAD 모델 — --vad-model, WHISPER_VAD_MODEL, MODEL_DIRS 의 ggml-silero-*.bin 순."""
+    if given:
+        return os.path.expanduser(given)
+    if os.environ.get("WHISPER_VAD_MODEL"):
+        return os.path.expanduser(os.environ["WHISPER_VAD_MODEL"])
+    found = []
+    for d in MODEL_DIRS:
+        found += sorted(glob.glob(os.path.join(os.path.expanduser(d), "ggml-silero-*.bin")))
+    for name in VAD_PREFERRED:
+        for f in found:
+            if os.path.basename(f) == name:
+                return f
+    return found[-1] if found else None
 
 
 def model_tag(model):
@@ -135,7 +155,7 @@ def srt_end(srt):
         return 0
 
 
-def transcribe(src, srt, model, lang, threads):
+def transcribe(src, srt, model, lang, threads, vad=None):
     """src → srt. 성공하면 (True, 메시지), 실패하면 (False, 사유). 반쪽 파일은 남기지 않는다."""
     if not os.path.isfile(src):
         return False, "파일이 없다"
@@ -150,7 +170,8 @@ def transcribe(src, srt, model, lang, threads):
             if r.returncode:
                 return False, f"ffmpeg — {r.stderr.strip()[-300:]}"
             r = subprocess.run(["whisper-cli", "-m", model, "-f", wav, "-l", lang, "-t", str(threads),
-                                "-osrt", "-of", part_base], capture_output=True, text=True)
+                                "-osrt", "-of", part_base, *(["--vad", "-vm", vad] if vad else [])],
+                               capture_output=True, text=True)
             if r.returncode or not os.path.exists(part):
                 return False, f"whisper-cli — {r.stderr.strip()[-300:]}"
         os.replace(part, srt)
@@ -172,6 +193,8 @@ def main(argv=None, prog=None):
     ap.add_argument("-m", "--model")
     ap.add_argument("-o", "--outdir", help="자막을 둘 폴더 (폴더를 주면 하위 구조를 그대로 만든다)")
     ap.add_argument("-t", "--threads", type=int, default=max(1, (os.cpu_count() or 4) - 2))
+    ap.add_argument("--no-vad", dest="vad", action="store_false", help="VAD 를 끈다 (자막 이름에서 vad 가 빠진다)")
+    ap.add_argument("--vad-model", help="VAD 모델 파일 (기본: lnb setup 이 받은 ggml-silero-*.bin)")
     ap.add_argument("--force", action="store_true", help="같은 모델의 자막이 있어도 다시 만든다")
     a = ap.parse_args(argv)
     for tool in ("whisper-cli", "ffmpeg"):
@@ -181,7 +204,12 @@ def main(argv=None, prog=None):
     if not model or not os.path.exists(model):
         sys.exit("whisper 모델 파일을 못 찾았다 — lnb setup 으로 받거나, -m 또는 WHISPER_MODEL 로 ggml-*.bin 경로를 줄 것")
     outdir = os.path.abspath(os.path.expanduser(a.outdir)) if a.outdir else None
-    tag = model_tag(model)
+    vad = None
+    if a.vad:
+        vad = find_vad(a.vad_model)
+        if not vad or not os.path.exists(vad):
+            sys.exit("VAD 모델(ggml-silero-*.bin)을 못 찾았다 — lnb setup 으로 받거나, --vad-model 로 경로를 주거나, --no-vad")
+    tag = model_tag(model) + (" vad" if vad else "")
 
     jobs = collect(a.paths, outdir)
     if not jobs:
@@ -206,7 +234,7 @@ def main(argv=None, prog=None):
             eta = f" · 남은 시간 약 {hms(left * spent / heard)}" if heard and spent else ""
             print(f"[{i}/{len(todo)}] {src}{eta}", flush=True)
             start = time.time()
-            ok, why = transcribe(src, srt, model, a.language, a.threads)
+            ok, why = transcribe(src, srt, model, a.language, a.threads, vad)
             spent += time.time() - start
             heard += total or 0
             if not ok:

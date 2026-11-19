@@ -8,7 +8,7 @@ import os
 import shutil
 import sys
 
-from .transcribe import find_model
+from .transcribe import find_model, find_vad
 
 
 # (이름, 찾는 법, 쓰는 하위 명령, macOS 설치, 그 밖)
@@ -52,6 +52,13 @@ def main(argv=None, prog=None):
         print(f"없음  {'whisper 모델':<21} → transcribe 가 안 된다 (자막 있는 강의만 쓰면 필요 없다)\n"
               f"      받기: lnb setup   (약 574MB, 받은 뒤 SHA256 확인)\n"
               f"      다른 곳에 두었으면: export WHISPER_MODEL=<ggml-*.bin 경로>")
+    vad = find_vad(None)
+    if vad and os.path.exists(vad):
+        print(f"OK    {'VAD 모델':<21} {vad}")
+    else:
+        missing += 1
+        print(f"없음  {'VAD 모델':<21} → transcribe 가 VAD 없이는 --no-vad 로만 된다\n"
+              f"      받기: lnb setup   (약 0.9MB, 받은 뒤 SHA256 확인)")
     print("\n모두 있다." if not missing else f"\n빠진 것 {missing}개 — 위 안내대로 깔면 된다.")
     return 1 if missing else 0
 

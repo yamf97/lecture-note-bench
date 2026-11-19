@@ -463,6 +463,9 @@ class Setup(unittest.TestCase):
         self.assertIn("/resolve/" + setup_env.MODEL_COMMIT + "/", setup_env.MODEL_URL)
         self.assertTrue(setup_env.MODEL_URL.endswith(setup_env.MODEL_NAME))
         self.assertRegex(setup_env.MODEL_SHA256, r"^[0-9a-f]{64}$")
+        self.assertIn("/resolve/" + setup_env.VAD_COMMIT + "/", setup_env.VAD_URL)
+        self.assertTrue(setup_env.VAD_URL.endswith(setup_env.VAD_NAME))
+        self.assertRegex(setup_env.VAD_SHA256, r"^[0-9a-f]{64}$")
 
 
 if __name__ == "__main__":
@@ -493,6 +496,12 @@ class Transcribe(unittest.TestCase):
         fake_bin(self.bin, "whisper-cli", WHISPER_OK)
         self.model = os.path.join(self.tmp, "ggml-tiny.bin")
         open(self.model, "w").close()
+        self.vad = os.path.join(self.tmp, "ggml-silero-test.bin")
+        open(self.vad, "w").close()
+        old_vad = os.environ.get("WHISPER_VAD_MODEL")
+        os.environ["WHISPER_VAD_MODEL"] = self.vad
+        self.addCleanup(lambda: os.environ.__setitem__("WHISPER_VAD_MODEL", old_vad) if old_vad
+                        else os.environ.pop("WHISPER_VAD_MODEL", None))
         self.lec = os.path.join(self.tmp, "강의")
         for rel in ("물리/1강.mp4", "화학/1강.mp4", "화학/메모.txt", ".숨김/2강.mp4"):
             path = os.path.join(self.lec, rel)
@@ -512,14 +521,14 @@ class Transcribe(unittest.TestCase):
     def test_folder_mirrors_tree_with_model_name(self):
         code, out = self.run_tr(self.lec, "-o", self.out)
         self.assertEqual(code, 0, out)
-        self.assertEqual(self.srts(), ["물리/1강 (whisper tiny).srt", "화학/1강 (whisper tiny).srt"])
+        self.assertEqual(self.srts(), ["물리/1강 (whisper tiny vad).srt", "화학/1강 (whisper tiny vad).srt"])
         self.assertEqual(os.listdir(os.path.join(self.lec, "물리")), ["1강.mp4"])  # 원본 폴더는 그대로
 
     def test_same_stem_different_ext_do_not_collide(self):
         open(os.path.join(self.lec, "물리", "1강.m4a"), "w").close()
         code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
         self.assertEqual(code, 0, out)
-        self.assertEqual(self.srts(), ["1강.m4a (whisper tiny).srt", "1강.mp4 (whisper tiny).srt"])
+        self.assertEqual(self.srts(), ["1강.m4a (whisper tiny vad).srt", "1강.mp4 (whisper tiny vad).srt"])
         code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
         self.assertIn("이미 있음 2개", out)
 
@@ -530,11 +539,32 @@ class Transcribe(unittest.TestCase):
         self.assertIn("자막 이름이 겹쳐", str(code))  # sys.exit(문구) — 문구가 종료 코드로 온다
         self.assertEqual(self.srts(), [])
 
+    def test_vad_is_passed_to_whisper(self):
+        log = os.path.join(self.tmp, "args.log")
+        fake_bin(self.bin, "whisper-cli", f'echo "$@" >> "{log}"\n' + WHISPER_OK)
+        code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"--vad -vm {self.vad}", open(log).read())
+
+    def test_no_vad_drops_flag_and_name(self):
+        log = os.path.join(self.tmp, "args.log")
+        fake_bin(self.bin, "whisper-cli", f'echo "$@" >> "{log}"\n' + WHISPER_OK)
+        code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out, "--no-vad")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("--vad", open(log).read())
+        self.assertEqual(self.srts(), ["1강 (whisper tiny).srt"])
+
+    def test_missing_vad_model_stops(self):
+        os.environ["WHISPER_VAD_MODEL"] = os.path.join(self.tmp, "nope.bin")
+        code, _ = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
+        self.assertIn("VAD", str(code))
+        self.assertEqual(self.srts(), [])
+
     def test_same_file_twice_runs_once(self):
         f = os.path.join(self.lec, "물리", "1강.mp4")
         code, out = self.run_tr(f, f, "-o", self.out)
         self.assertEqual(code, 0, out)
-        self.assertEqual(self.srts(), ["1강 (whisper tiny).srt"])
+        self.assertEqual(self.srts(), ["1강 (whisper tiny vad).srt"])
         self.assertIn("받아쓸 것 1개", out)
 
     def test_rerun_skips_existing(self):
@@ -551,8 +581,8 @@ class Transcribe(unittest.TestCase):
         open(other, "w").close()
         code, out = self.run_tr(self.lec, "-o", self.out, model=other)
         self.assertEqual(code, 0, out)
-        self.assertEqual(self.srts(), ["물리/1강 (whisper large-v9).srt", "물리/1강 (whisper tiny).srt",
-                                       "화학/1강 (whisper large-v9).srt", "화학/1강 (whisper tiny).srt"])
+        self.assertEqual(self.srts(), ["물리/1강 (whisper large-v9 vad).srt", "물리/1강 (whisper tiny vad).srt",
+                                       "화학/1강 (whisper large-v9 vad).srt", "화학/1강 (whisper tiny vad).srt"])
 
     def test_failure_leaves_no_partial_and_lists_it(self):
         fake_bin(self.bin, "whisper-cli", WHISPER_FAIL)
@@ -576,7 +606,7 @@ class Transcribe(unittest.TestCase):
         src = os.path.join(self.lec, "물리", "1강.mp4")
         code, out = self.run_tr(src)
         self.assertEqual(code, 0, out)
-        self.assertTrue(os.path.exists(os.path.join(self.lec, "물리", "1강 (whisper tiny).srt")))
+        self.assertTrue(os.path.exists(os.path.join(self.lec, "물리", "1강 (whisper tiny vad).srt")))
 
     def test_short_existing_srt_warns(self):
         fake_bin(self.bin, "ffprobe", "echo 60.0")  # 음성 60초, 자막은 5초에서 끝난다
