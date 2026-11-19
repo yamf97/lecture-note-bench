@@ -84,7 +84,7 @@ lnb check 노트.md
 | `lnb setup` | 받아쓰기 준비. 음성인식 모델을 받고 원본과 같은지 확인합니다 |
 | `lnb doctor` | 필요한 바깥 프로그램과 모델이 있는지 점검합니다 |
 
-명령마다 자세한 옵션은 `lnb <명령> --help`. 설치하지 않고 저장소에서 `python3 tools/<파일>.py`로 불러도 같게 실행됩니다(`setup`·`doctor` 제외).
+명령마다 자세한 옵션은 `lnb <명령> --help`. 설치하지 않고 저장소에서 `python3 tools/<파일>.py`로 불러도 같게 실행됩니다. 파일 이름: `fetch.py` · `transcribe.py` · `vtt_text.py`(`text`) · `frames.py` · `pages.py` · `check_note.py`(`check`). `setup`·`doctor`는 설치한 `lnb`로만 됩니다.
 
 ## 노트 쓰기
 
@@ -270,7 +270,7 @@ lnb check note.md                                                            # c
 | `lnb setup` | Prepares transcription: downloads the speech model and verifies it. |
 | `lnb doctor` | Checks for the external programs and the model. |
 
-Each command has `lnb <command> --help`. Without installing, run `python3 tools/<file>.py` from the repository (except `setup` and `doctor`).
+Each command has `lnb <command> --help`. Without installing, run `python3 tools/<file>.py` from the repository: `fetch.py`, `transcribe.py`, `vtt_text.py` (`text`), `frames.py`, `pages.py`, `check_note.py` (`check`). `setup` and `doctor` need the installed `lnb`.
 
 ### Writing a note
 
