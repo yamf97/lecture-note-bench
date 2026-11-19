@@ -9,6 +9,8 @@
 결과: <이름> (whisper <모델>).srt   예: 1강 (whisper large-v3-turbo-q5_0).srt
   - -o 가 없으면 강의 파일 옆에, 있으면 -o 아래에 만든다. 폴더를 주면 그 안의 하위 폴더
     구조를 -o 아래에 그대로 만든다 (물리/1강.mp4 → <-o>/물리/1강 (whisper …).srt).
+  - 같은 폴더에 1강.mp4 와 1강.m4a 처럼 이름만 같은 파일이 있으면 「1강.mp4 (whisper …).srt」처럼
+    확장자까지 넣어 서로 덮어쓰지 않게 한다.
   - 같은 모델의 자막이 이미 있으면 건너뛴다 — 끊겼으면 같은 명령을 다시 치면 이어서 한다.
     모델을 바꾸면 이름이 달라지므로 새로 만들고, 예전 자막은 그대로 둔다. 다시 하려면 --force.
   - 자막은 다 만든 뒤에야 제 이름이 된다. 도중에 끊겨 반쪽 자막이 남는 일은 없다.
@@ -98,9 +100,25 @@ def collect(paths, outdir):
     return jobs
 
 
-def srt_path(src, dest, tag):
-    stem = os.path.splitext(os.path.basename(src))[0]
+def srt_path(src, dest, tag, keep_ext=False):
+    """keep_ext: 같은 폴더에 이름이 같고 확장자만 다른 파일이 있으면 확장자까지 넣어 겹치지 않게 한다."""
+    name = os.path.basename(src)
+    stem = name if keep_ext else os.path.splitext(name)[0]
     return os.path.join(dest, f"{stem} (whisper {tag}).srt")
+
+
+def srt_paths(jobs, tag):
+    """[(원본, 자막)] — 1강.mp4 와 1강.m4a 가 같이 있으면 둘 다 「1강.mp4 (whisper …)」 꼴로.
+    같은 파일을 두 번 주면 한 번만 한다."""
+    uniq, seen = [], set()
+    for src, dest in jobs:
+        key = (os.path.realpath(src), os.path.normpath(dest))
+        if key not in seen:
+            seen.add(key)
+            uniq.append((src, dest))
+    plain = [srt_path(src, dest, tag) for src, dest in uniq]
+    return [(src, srt_path(src, dest, tag, keep_ext=plain.count(p) > 1))
+            for (src, dest), p in zip(uniq, plain)]
 
 
 def srt_end(srt):
@@ -163,8 +181,7 @@ def main(argv=None, prog=None):
     if not jobs:
         sys.exit("받아쓸 파일이 없다 — 지원 확장자: " + " ".join(sorted(MEDIA)))
     todo, done = [], 0
-    for src, dest in jobs:
-        srt = srt_path(src, dest, tag)
+    for src, srt in srt_paths(jobs, tag):
         if os.path.exists(srt) and not a.force:
             done += 1
             total = duration(src)

@@ -515,6 +515,21 @@ class Transcribe(unittest.TestCase):
         self.assertEqual(self.srts(), ["물리/1강 (whisper tiny).srt", "화학/1강 (whisper tiny).srt"])
         self.assertEqual(os.listdir(os.path.join(self.lec, "물리")), ["1강.mp4"])  # 원본 폴더는 그대로
 
+    def test_same_stem_different_ext_do_not_collide(self):
+        open(os.path.join(self.lec, "물리", "1강.m4a"), "w").close()
+        code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.srts(), ["1강.m4a (whisper tiny).srt", "1강.mp4 (whisper tiny).srt"])
+        code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
+        self.assertIn("이미 있음 2개", out)
+
+    def test_same_file_twice_runs_once(self):
+        f = os.path.join(self.lec, "물리", "1강.mp4")
+        code, out = self.run_tr(f, f, "-o", self.out)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.srts(), ["1강 (whisper tiny).srt"])
+        self.assertIn("받아쓸 것 1개", out)
+
     def test_rerun_skips_existing(self):
         self.run_tr(self.lec, "-o", self.out)
         fake_bin(self.bin, "whisper-cli", "exit 1")  # 다시 받아쓰면 실패한다
