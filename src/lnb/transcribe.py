@@ -117,8 +117,14 @@ def srt_paths(jobs, tag):
             seen.add(key)
             uniq.append((src, dest))
     plain = [srt_path(src, dest, tag) for src, dest in uniq]
-    return [(src, srt_path(src, dest, tag, keep_ext=plain.count(p) > 1))
-            for (src, dest), p in zip(uniq, plain)]
+    pairs = [(src, srt_path(src, dest, tag, keep_ext=plain.count(p) > 1))
+             for (src, dest), p in zip(uniq, plain)]
+    final = [srt for _, srt in pairs]
+    clash = sorted({srt for srt in final if final.count(srt) > 1})
+    if clash:  # 예: a.mp4 · a.m4a · a.mp4.m4a — 확장자를 넣어도 겹친다
+        sys.exit("자막 이름이 겹쳐 멈췄다 — 아래 원본 중 하나의 이름을 바꿀 것:\n" + "\n".join(
+            f"  {src}" for src, srt in pairs if srt in clash))
+    return pairs
 
 
 def srt_end(srt):

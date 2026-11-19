@@ -523,6 +523,13 @@ class Transcribe(unittest.TestCase):
         code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
         self.assertIn("이미 있음 2개", out)
 
+    def test_unresolvable_name_clash_stops(self):
+        for n in ("1강.m4a", "1강.mp4.m4a"):
+            open(os.path.join(self.lec, "물리", n), "w").close()
+        code, out = self.run_tr(os.path.join(self.lec, "물리"), "-o", self.out)
+        self.assertIn("자막 이름이 겹쳐", str(code))  # sys.exit(문구) — 문구가 종료 코드로 온다
+        self.assertEqual(self.srts(), [])
+
     def test_same_file_twice_runs_once(self):
         f = os.path.join(self.lec, "물리", "1강.mp4")
         code, out = self.run_tr(f, f, "-o", self.out)
