@@ -20,7 +20,7 @@ import shutil
 import sys
 import urllib.request
 
-from .transcribe import find_model, find_vad
+from .transcribe import cli_has_vad, find_model, find_vad
 
 MODEL_NAME = "ggml-large-v3-turbo-q5_0.bin"
 MODEL_COMMIT = "98aa99a0a9db05ae2342309f5096248665f7cba3"  # huggingface.co/ggerganov/whisper.cpp
@@ -94,6 +94,9 @@ def check_programs(out=sys.stdout):
         else:
             missing += 1
             print(f"없음  {name:<13} → {how}", file=out)
+    if shutil.which("whisper-cli") and not cli_has_vad():
+        missing += 1
+        print("주의  whisper-cli 가 VAD(--vad)를 모르는 옛 판이다 → brew upgrade whisper-cpp", file=out)
     return missing
 
 

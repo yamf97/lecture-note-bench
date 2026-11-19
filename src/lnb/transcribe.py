@@ -6,7 +6,8 @@
     lnb transcribe 강의.mp3 -m ~/models/ggml-large-v3-turbo-q5_0.bin
     (설치하지 않았으면 저장소에서 `lnb transcribe` 대신 `python3 tools/transcribe.py`)
 
-결과: <이름> (whisper <모델> vad).srt   예: 1강 (whisper large-v3-turbo-q5_0 vad).srt
+결과: <이름> (whisper <모델> vad-<VAD 모델>).srt
+      예: 1강 (whisper large-v3-turbo-q5_0 vad-silero-v6.2.0).srt
   - VAD(말소리 구간 찾기, Silero)를 기본으로 켠다. 조용한 구간에서 whisper 가 "아 아 아 …"
     같은 말을 지어내거나 30초씩 뭉치는 일을 막는다. 끄려면 --no-vad (이름에서 vad 가 빠진다).
   - -o 가 없으면 강의 파일 옆에, 있으면 -o 아래에 만든다. 폴더를 주면 그 안의 하위 폴더
@@ -79,6 +80,15 @@ def find_vad(given):
             if os.path.basename(f) == name:
                 return f
     return found[-1] if found else None
+
+
+def cli_has_vad():
+    """이 whisper-cli 가 --vad 를 아는가 (whisper.cpp 1.7.6 무렵부터). 모르면 False."""
+    try:
+        r = subprocess.run(["whisper-cli", "--help"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return "--vad" in (r.stdout + r.stderr)
 
 
 def model_tag(model):
@@ -209,7 +219,9 @@ def main(argv=None, prog=None):
         vad = find_vad(a.vad_model)
         if not vad or not os.path.exists(vad):
             sys.exit("VAD 모델(ggml-silero-*.bin)을 못 찾았다 — lnb setup 으로 받거나, --vad-model 로 경로를 주거나, --no-vad")
-    tag = model_tag(model) + (" vad" if vad else "")
+        if not cli_has_vad():
+            sys.exit("이 whisper-cli 는 VAD(--vad)를 모른다 — brew upgrade whisper-cpp 로 올리거나, --no-vad")
+    tag = model_tag(model) + (f" vad-{model_tag(vad)}" if vad else "")  # VAD 모델이 바뀌면 다른 판
 
     jobs = collect(a.paths, outdir)
     if not jobs:

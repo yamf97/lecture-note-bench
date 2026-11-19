@@ -13,20 +13,20 @@
 ### 한국어
 
 **추가**
-- **VAD(말소리 구간 찾기)**: `lnb transcribe`가 기본으로 Silero VAD를 켜서 말소리가 있는 구간만 받아씁니다. 조용한 구간에 whisper가 "아 아 아 …" 같은 말을 지어내거나 30초 분량을 한 덩어리로 뭉치는 일이 줄어듭니다. 30분 강의 하나로 비교했을 때 VAD를 끈 쪽에만 그런 구간이 두 곳 생겼고, 켠 쪽이 약 25% 빨랐습니다. 끄려면 `--no-vad`.
+- **VAD(말소리 구간 찾기)**: `lnb transcribe`가 기본으로 Silero VAD를 켜서 말소리가 있는 구간만 받아씁니다. 조용한 구간에 whisper가 "아 아 아 …" 같은 말을 지어내거나 30초 분량을 한 덩어리로 뭉치는 일이 줄어듭니다. 30분 강의 하나로 비교했을 때 VAD를 끈 쪽에만 그런 구간이 두 곳 생겼고, 켠 쪽이 약 25% 빨랐습니다. 끄려면 `--no-vad`. VAD를 모르는 옛 whisper-cli면 시작 전에 `brew upgrade whisper-cpp`를 안내하고 멈춥니다.
 - `lnb setup`이 VAD 모델(`ggml-silero-v6.2.0.bin`, 약 0.9MB)도 받습니다. 주소는 한 커밋에 고정돼 있고 SHA256이 맞을 때만 둡니다. `lnb doctor`도 VAD 모델을 확인합니다.
 
 **바뀜**
-- 자막 이름에 `vad`가 붙습니다: `<이름> (whisper <모델> vad).srt`. VAD 없이 만든 0.4.0 자막과는 다른 판으로 보고 새로 만듭니다. VAD 모델이 없으면 `lnb setup`을 하거나 `--no-vad`를 쓰라고 알리고 멈춥니다.
+- 자막 이름에 VAD 모델이 붙습니다: `<이름> (whisper <모델> vad-<VAD 모델>).srt`. VAD 모델을 바꾸면 다른 판으로 보고 새로 만듭니다. VAD 없이 만든 0.4.0 자막과는 다른 판으로 보고 새로 만듭니다. VAD 모델이 없으면 `lnb setup`을 하거나 `--no-vad`를 쓰라고 알리고 멈춥니다.
 
 ### English
 
 **Added**
-- **VAD (voice activity detection)**: `lnb transcribe` turns on Silero VAD by default and transcribes only speech. This cuts down on whisper inventing text ("ah ah ah …") or lumping 30 seconds together in quiet stretches. On one 30-minute lecture, only the run without VAD had such stretches (two), and the VAD run was about 25% faster. Turn it off with `--no-vad`.
+- **VAD (voice activity detection)**: `lnb transcribe` turns on Silero VAD by default and transcribes only speech. This cuts down on whisper inventing text ("ah ah ah …") or lumping 30 seconds together in quiet stretches. On one 30-minute lecture, only the run without VAD had such stretches (two), and the VAD run was about 25% faster. Turn it off with `--no-vad`. With an old whisper-cli that lacks VAD, the run stops up front and suggests `brew upgrade whisper-cpp`.
 - `lnb setup` also downloads the VAD model (`ggml-silero-v6.2.0.bin`, about 0.9 MB), pinned to one commit and kept only if its SHA256 matches. `lnb doctor` checks for it too.
 
 **Changed**
-- Caption names get `vad`: `<name> (whisper <model> vad).srt`. Captions made by 0.4.0 without VAD count as a different version and are made again. Without the VAD model, the run stops and points to `lnb setup` or `--no-vad`.
+- Caption names include the VAD model: `<name> (whisper <model> vad-<VAD model>).srt`; a different VAD model makes a new caption. Captions made by 0.4.0 without VAD count as a different version and are made again. Without the VAD model, the run stops and points to `lnb setup` or `--no-vad`.
 
 ## 0.4.0 — 2026-11-19
 
